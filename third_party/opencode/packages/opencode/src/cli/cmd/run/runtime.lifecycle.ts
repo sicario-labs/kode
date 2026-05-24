@@ -159,12 +159,12 @@ export async function createRuntimeLifecycle(input: LifecycleInput): Promise<Lif
   return withRunSpan(
     "RunLifecycle.boot",
     {
-      "opencode.agent.name": input.agent,
-      "opencode.directory": input.directory,
-      "opencode.first": input.first,
-      "opencode.model.provider": input.model?.providerID,
-      "opencode.model.id": input.model?.modelID,
-      "opencode.model.variant": input.variant,
+      "Kode".agent.name": input.agent,
+      "Kode".directory": input.directory,
+      "Kode".first": input.first,
+      "Kode".model.provider": input.model?.providerID,
+      "Kode".model.id": input.model?.modelID,
+      "Kode".model.variant": input.variant,
       "session.id": input.getSessionID?.() || input.sessionID || undefined,
     },
     async () => {
@@ -262,7 +262,7 @@ export async function createRuntimeLifecycle(input: LifecycleInput): Promise<Lif
           return withRunSpan(
             "RunLifecycle.close",
             {
-              "opencode.show_exit": next.showExit,
+              "Kode".show_exit": next.showExit,
               "session.id": next.sessionID || input.getSessionID?.() || input.sessionID || undefined,
             },
             async () => {

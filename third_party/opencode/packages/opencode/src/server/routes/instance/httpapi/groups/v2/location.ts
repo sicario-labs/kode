@@ -35,13 +35,13 @@ export class V2LocationMiddleware extends HttpApiMiddleware.Service<
   {
     provides: Catalog.Service | PluginBoot.Service
   }
->()("@opencode/ExperimentalHttpApiV2Location") {}
+>()("@kode/ExperimentalHttpApiV2Location") {}
 
 function ref(request: HttpServerRequest.HttpServerRequest): Location.Ref {
   const query = new URL(request.url, "http://localhost").searchParams
   return {
-    directory: query.get("location[directory]") || request.headers["x-opencode-directory"] || process.cwd(),
-    workspaceID: query.get("location[workspace]") || request.headers["x-opencode-workspace"],
+    directory: query.get("location[directory]") || request.headers["x-kode-directory"] || process.cwd(),
+    workspaceID: query.get("location[workspace]") || request.headers["x-kode-workspace"],
   }
 }
 

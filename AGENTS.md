@@ -9,16 +9,17 @@ opencode that replaces generate-and-pray with a structured
 ```
 C:\kode
 ├── cmd/kode/          ← Go CLI entry point
-├── internal/          ← Go engine (graph, verify, execution)
+├── internal/          ← Go engine (graph, verify, execution, llm)
 ├── third_party/
-│   └── opencode/      ← vendored opencode monorepo (TS/Bun)
+│   └── opencode/      ← vendored opencode monorepo (TS/Bun), rebranded as Kode TUI
 ├── go.mod             ← Go module: github.com/kode/kode
 └── ROADMAP.md         ← full roadmap and fork strategy
 ```
 
-The Go engine communicates with opencode's TypeScript code via subprocess IPC
-(`kode.exe verify --input <json>`). The TS side (opencode TUI) calls into the
-Go binary as a verification oracle before writing patches to disk.
+The Go engine (`kode.exe`) is the unified CLI entry point. It communicates with
+the TypeScript TUI (rebranded opencode) via subprocess — `kode tui` spawns the
+TUI, and the TUI calls `kode.exe verify --input <json>` as a verification oracle
+before writing patches to disk.
 
 ## Commands
 
@@ -28,6 +29,7 @@ Go binary as a verification oracle before writing patches to disk.
 - `kode run <prompt>` — Full generate→verify→apply pipeline (alias for generate --apply)
 - `kode loop <task>` — Full Plan→Generate→Verify→Apply→Test cycle with rollback
 - `kode stats` — Analyze gatekeeper audit log
+- `kode tui` — Launch the interactive Kode TUI (requires bun + node_modules)
 
 ## Build
 
@@ -38,8 +40,17 @@ go build -o bin/kode.exe ./cmd/kode
 Tests: `go test ./...` (121 tests across 6 packages)
 Binary: ~10MB single executable, zero CGo
 
+## TUI Setup
+
+```bash
+npm install -g bun
+cd third_party/opencode
+bun install
+cd ../..
+kode tui
+```
+
 ## Upstream
 
 Vendored from [github.com/anomalyco/opencode](https://github.com/anomalyco/opencode) v1.15.10.
-TS files modified: `third_party/opencode/packages/opencode/src/bridge/gatekeeper.ts`,
-`third_party/opencode/packages/opencode/src/tool/apply_patch.ts`.
+Rebranded as Kode: ~158 TS files modified, plus new Go bridge code.

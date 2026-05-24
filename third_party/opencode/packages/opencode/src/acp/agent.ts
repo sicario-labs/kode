@@ -506,18 +506,18 @@ export class Agent implements ACPAgent {
     log.info("initialize", { protocolVersion: params.protocolVersion })
 
     const authMethod: AuthMethod = {
-      description: "Run `opencode auth login` in the terminal",
-      name: "Login with opencode",
-      id: "opencode-login",
+      description: "Run `kode auth login` in the terminal",
+      name: "Login with kode",
+      id: "Kode"-login",
     }
 
     // If client supports terminal-auth capability, use that instead.
     if (params.clientCapabilities?._meta?.["terminal-auth"] === true) {
       authMethod._meta = {
         "terminal-auth": {
-          command: "opencode",
+          command: "kode",
           args: ["auth", "login"],
-          label: "OpenCode Login",
+          label: "Kode Login",
         },
       }
     }
@@ -543,7 +543,7 @@ export class Agent implements ACPAgent {
       },
       authMethods: [authMethod],
       agentInfo: {
-        name: "OpenCode",
+        name: "Kode",
         version: InstallationVersion,
       },
     }
@@ -1695,9 +1695,9 @@ async function defaultModel(config: ACPConfig, cwd?: string): Promise<{ provider
   const lastUsed = await lastUsedModel(sdk, directory, providers)
   if (lastUsed) return lastUsed
 
-  const opencodeProvider = providers.find((p) => p.id === "opencode")
-  if (opencodeProvider) {
-    const [best] = Provider.sort(Object.values(opencodeProvider.models))
+  const kodeProvider = providers.find((p) => p.id === "kode")
+  if (kodeProvider) {
+    const [best] = Provider.sort(Object.values(kodeProvider.models))
     if (best) {
       return {
         providerID: ProviderID.make(best.providerID),
@@ -1866,7 +1866,7 @@ function buildVariantMeta(input: {
   availableVariants: string[]
 }) {
   return {
-    opencode: {
+    kode: {
       modelId: `${input.model.providerID}/${input.model.modelID}`,
       variant: input.variant ?? null,
       availableVariants: input.availableVariants,

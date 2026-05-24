@@ -7,36 +7,31 @@ opencode that replaces generate-and-pray with a structured
 ## Fork Strategy
 
 ```
-opencode upstream (origin/dev @ 47f3332)
-  │
-  └─ github.com/EmmyCodes234/kode (our fork)
-       │
-       ├── packages/opencode/     ← TS monorepo (upstream code, 3 files patched)
-       ├── cmd/kode/              ← Go CLI (our engine)
-       ├── internal/              ← Go packages (graph, verify, execution)
-       └── bin/kode.exe           ← compiled binary
+C:\kode
+├── cmd/kode/          ← Go CLI entry point (kode.exe)
+├── internal/          ← Go engine (graph, verify, execution, llm)
+├── third_party/
+│   └── opencode/      ← vendored opencode monorepo (TS/Bun), rebranded as Kode TUI
+├── go.mod             ← Go module: github.com/kode/kode
+├── bin/kode.exe       ← compiled Go binary (~10MB)
+└── logs/kode.log      ← telemetry audit log
 ```
 
-**Git strategy:** Keep opencode's TS code pristine where possible. Our Go engine
-is additive (new files). Only 3 TS files are modified — easily rebased.
+**Vendor model over git fork:** Clean-slate repo (`git init`) with opencode in
+`third_party/opencode/` avoids upstream cadence pressure. Updates pulled on our
+schedule (zig or subtree).
 
 ---
 
-## Phase 0: Fork Health (immediate)
-
-Deepen the shallow clone to enable clean upstream merges.
+## Phase 0: Fork Health (deferred)
 
 - [ ] Fetch full history from opencode upstream
-- [ ] Add opencode as a second remote
-- [ ] Set up a rebase workflow for the 3 patched TS files
-- [ ] Verify `git merge opencode/dev` would work cleanly
+- [ ] Set up a rebase workflow for the 158 modified TS files
+- [ ] Verify `git subtree pull` works cleanly
 
 ---
 
-## Phase 1: Standalone CLI (current — v1.0.0)
-
-The Go binary works independently of the TS monorepo. It provides deterministic
-safety without needing node_modules or opencode's runtime.
+## Phase 1: Standalone CLI (v1.0.0 — done)
 
 ```
 kode plan     — Build surgical 8K context graph from entry files
@@ -44,65 +39,61 @@ kode verify   — Verify file content or hunks through 4-gate check
 kode stats    — Analyze gatekeeper audit log for failure patterns
 ```
 
-- [x] Plan command (Phase 0)
-- [x] Verify command (Phase 1)
-- [x] Verify command — telemetry logger (v1.0.0)
-- [x] Stats command (v1.0.0)
+- [x] Context engine (go/parser + go/ast, 8K token cap)
+- [x] 4-gate verification (syntax → imports → calls → architecture)
+- [x] Executor with cumulative state, rollback, atomic commit
+- [x] Telemetry and analytics (`kode stats`, `logs/kode.log`)
 
 ---
 
-## Phase 2: LLM Integration (next)
-
-Kode currently cannot generate patches — it can only verify them. To close the
-loop, we need an LLM provider interface in Go.
-
-**Options:**
-- **A:** Shell out to opencode's Bun/TS runtime for LLM calls (reuse existing providers)
-- **B:** Implement a lightweight Go LLM client (OpenAI/Anthropic only, ~200 lines)
-- **C:** Use opencode's SDK as a subprocess (heavier but more complete)
-
-**Implementation: Native Go OpenAI-compatible client** — works with any
-OpenAI-compatible endpoint (OpenAI, LiteLLM, Ollama, local inference).
-Configured via env vars: KODE_LLM_API_KEY, KODE_LLM_ENDPOINT, KODE_LLM_MODEL.
-
-Bun-based opencode provider federation is available as a future extension
-for non-OpenAI providers (Anthropic, Google, Groq, etc.).
+## Phase 2: LLM Integration (v1.1.0 — done)
 
 - [x] `kode generate <prompt>` — call LLM, return structured hunks
-- [x] `kode run <prompt>` — full generate → verify → apply pipeline (--apply flag on generate)
+- [x] `kode run <prompt>` — full generate → verify → apply pipeline
 - [x] Wire `--model` flag through to the LLM provider
-- [ ] `kode apply <hunks>` — verify + apply directly from a JSON file (can use verify --input)
 
 ---
 
-## Phase 3: Full Loop
+## Phase 3: Full Loop (v1.2.0 — done)
 
-The Plan → Generate → Verify → Apply → Test cycle, fully automated.
-
-- [x] `kode loop <task>` — entry point for the full cycle
-- [x] Auto-retry on verify failure (3 rounds, already built in executor)
-- [x] Test step (run `go test`, `npm test`, or custom command after apply)
-- [x] Rollback on test failure (restore from snapshot)
+- [x] `kode loop <task>` — full Plan→Generate→Verify→Apply→Test cycle
+- [x] Auto-retry on verify failure (3 rounds)
+- [x] Test step (auto-detect: go test, npm test, cargo test)
+- [x] Rollback on test failure (snapshot + restore)
 
 ---
 
-## Phase 4: Upstream Sync
+## Phase 4: Rebrand & TUI (v2.0.0 — done)
 
-Regularly merge opencode updates while keeping our patches.
+- [x] Rebrand all user-facing strings: "opencode" → "Kode" / "kode"
+- [x] New KODE ASCII logo and wordmark
+- [x] CLI script name: `opencode` → `kode`
+- [x] Env vars: `OPENCODE_*` → `KODE_*`
+- [x] Config files: `opencode.json` → `kode.json`, `.opencode` → `.kode`
+- [x] Internal URLs: `opencode.internal` → `kode.internal`
+- [x] All HTTP headers, User-Agent, provider names, MCP client name
+- [x] `kode tui` — unified CLI entry point that spawns TS TUI
+- [x] Gatekeeper binary resolution via `KODE_BIN` env var + fallback search
+- [x] 158 TS files modified for full rebrand
 
-- [ ] Document the 3 patched TS files and their changes
-- [ ] Set up CI that tests both Go (`go test ./...`) and TS (if node_modules available)
+---
+
+## Phase 5: Upstream Sync
+
+- [ ] Document the 158 modified TS files and their changes
+- [ ] Set up CI that tests both Go (`go test ./...`) and TS
 - [ ] Investigate upstreaming gatekeeper.ts as an optional plugin
 
 ---
 
-## Phase 5: Polish
+## Phase 6: Polish
 
 - [ ] `kode explain <error-id>` — deep Markdown explanation of gate failures
 - [ ] `kode init` — scaffold `.kode.yaml` with architecture rules
 - [ ] Dynamic graph expansion — fetch missing symbols on demand
 - [ ] Better CLI output (colors, spinners, progress bars)
 - [ ] `go install github.com/EmmyCodes234/kode/cmd/kode@latest`
+- [ ] Install bun + node_modules automatically on first `kode tui`
 
 ---
 

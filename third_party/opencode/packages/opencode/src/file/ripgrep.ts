@@ -140,7 +140,7 @@ export interface Interface {
   readonly search: (input: SearchInput) => Effect.Effect<SearchResult, PlatformError | Error>
 }
 
-export class Service extends Context.Service<Service, Interface>()("@opencode/Ripgrep") {}
+export class Service extends Context.Service<Service, Interface>()("@kode/Ripgrep") {}
 
 export const use = serviceUse(Service)
 
@@ -439,7 +439,7 @@ export const layer: Layer.Layer<Service, never, AppFileSystem.Service | ChildPro
 
         const root: Node = { name: "", children: new Map() }
         for (const file of list) {
-          if (file.includes(".opencode")) continue
+          if (file.includes(".kode")) continue
           const parts = file.split(path.sep)
           if (parts.length < 2) continue
           let node = root

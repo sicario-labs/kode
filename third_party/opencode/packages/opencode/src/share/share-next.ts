@@ -17,7 +17,7 @@ import * as Log from "@opencode-ai/core/util/log"
 import { SessionShareTable } from "./share.sql"
 
 const log = Log.create({ service: "share-next" })
-const disabled = process.env["OPENCODE_DISABLE_SHARE"] === "true" || process.env["OPENCODE_DISABLE_SHARE"] === "1"
+const disabled = process.env["KODE_DISABLE_SHARE"] === "true" || process.env["KODE_DISABLE_SHARE"] === "1"
 
 export type Api = {
   create: string
@@ -75,7 +75,7 @@ export interface Interface {
   readonly remove: (sessionID: SessionID) => Effect.Effect<void, unknown>
 }
 
-export class Service extends Context.Service<Service, Interface>()("@opencode/ShareNext") {}
+export class Service extends Context.Service<Service, Interface>()("@kode/ShareNext") {}
 
 export const use = serviceUse(Service)
 

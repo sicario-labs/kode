@@ -1,4 +1,5 @@
 import { execFile } from "child_process"
+import { accessSync } from "fs"
 import { writeFile, unlink } from "fs/promises"
 import { resolve } from "path"
 import { tmpdir } from "os"
@@ -15,12 +16,31 @@ export interface VerifyResult {
 
 export type AskHandler = (message: string, details: string) => Promise<"retry" | "force" | "abort">
 
+function resolveKodeBinary(): string {
+  const envBin = process.env.KODE_BIN
+  if (envBin) return resolve(envBin)
+
+  const cwd = process.cwd()
+  const candidates = [
+    resolve(cwd, "bin", "kode.exe"),
+    resolve(cwd, "..", "..", "..", "bin", "kode.exe"),
+    resolve(cwd, "..", "..", "..", "..", "..", "bin", "kode.exe"),
+  ]
+  for (const candidate of candidates) {
+    try {
+      accessSync(candidate)
+      return candidate
+    } catch {}
+  }
+  return candidates[0]
+}
+
 export class VerificationGatekeeper {
   private binaryPath: string
   private askHandler: AskHandler
 
   constructor(binaryPath?: string, askHandler?: AskHandler) {
-    this.binaryPath = binaryPath ?? resolve("bin/kode.exe")
+    this.binaryPath = binaryPath ?? resolveKodeBinary()
     this.askHandler = askHandler ?? defaultAskHandler
   }
 
