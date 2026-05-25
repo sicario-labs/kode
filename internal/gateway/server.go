@@ -172,7 +172,7 @@ func (s *Server) resolveUpstream(modelID string) (string, string, error) {
 		if key == "" {
 			return "", "", fmt.Errorf("no Lite pool keys available")
 		}
-		return "https://api.openmodel.com/v1/chat/completions", key, nil
+		return "https://api.openmodel.ai/v1/chat/completions", key, nil
 	}
 
 	// Pro tier: direct upstream routing
