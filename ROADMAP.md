@@ -78,22 +78,35 @@ kode stats    — Analyze gatekeeper audit log for failure patterns
 
 ---
 
-## Phase 5: Upstream Sync
+## Phase 5: Rebrand Completion (v3.0.0 — done)
 
-- [ ] Document the 158 modified TS files and their changes
-- [ ] Set up CI that tests both Go (`go test ./...`) and TS
-- [ ] Investigate upstreaming gatekeeper.ts as an optional plugin
+- [x] Agent identity prompts (9 session prompt files) — OpenCode → Kode
+- [x] Env var flags (40 OPENCODE_* → KODE_*) across 23 consumer files
+- [x] HTTP headers, GitHub URLs → EmmyCodes234/kode
+- [x] Provider IDs (opencode → kode, opencode-go → kode-go)
+- [x] SDK types (OpencodeClient → KodeClient, 50+ files)
+- [x] customize-kode.md skill file rebrand (49 references)
+- [x] TSX imports (@opencode-ai/ → @kode/), missed in v2.0.0
 
 ---
 
-## Phase 6: Polish
+## Phase 6: CI & Release (v3.0.0 — done)
+
+- [x] `kode init` — scaffold `.kode/kode.json` with sensible defaults
+- [x] CI pipeline — Go test + build on Linux/Windows/macOS
+- [x] Release workflow — cross-platform binaries on tag push
+- [x] `go install github.com/EmmyCodes234/kode/cmd/kode@latest`
+
+---
+
+## Phase 7: Polish
 
 - [ ] `kode explain <error-id>` — deep Markdown explanation of gate failures
-- [ ] `kode init` — scaffold `.kode.yaml` with architecture rules
 - [ ] Dynamic graph expansion — fetch missing symbols on demand
 - [ ] Better CLI output (colors, spinners, progress bars)
-- [ ] `go install github.com/EmmyCodes234/kode/cmd/kode@latest`
 - [ ] Install bun + node_modules automatically on first `kode tui`
+- [ ] Tree-sitter resolvers for Python/TypeScript support
+- [ ] Document modified TS files for upstream sync
 
 ---
 
