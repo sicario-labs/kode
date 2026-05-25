@@ -39,6 +39,22 @@ func (s *Server) proxyToOpenModel(w http.ResponseWriter, r *http.Request, body [
 		if _, ok := msg["max_tokens"]; !ok {
 			msg["max_tokens"] = 4096
 		}
+		// Anthropic uses a separate 'system' field instead of system role in messages
+		if msgs, ok := msg["messages"].([]any); ok {
+			var filtered []any
+			for _, m := range msgs {
+				if mm, ok := m.(map[string]any); ok {
+					if role, _ := mm["role"].(string); role == "system" {
+						if content, _ := mm["content"].(string); content != "" {
+							msg["system"] = content
+						}
+						continue
+					}
+				}
+				filtered = append(filtered, m)
+			}
+			msg["messages"] = filtered
+		}
 		// Remove unsupported fields
 		delete(msg, "stream")
 		delete(msg, "temperature")
