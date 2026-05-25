@@ -1,0 +1,20 @@
+{
+  "name": "kode",
+  "version": "3.1.2",
+  "description": "The safe AI coding agent — zero-config, gatekeeper-verified patches",
+  "bin": {
+    "kode": "cli.js"
+  },
+  "scripts": {
+    "postinstall": "node install.js"
+  },
+  "repository": "github:sicario-labs/kode",
+  "homepage": "https://trykode.xyz",
+  "bugs": "https://github.com/sicario-labs/kode/issues",
+  "license": "MIT",
+  "engines": { "node": ">=18" },
+  "preferUnplugged": true,
+  "os": ["win32", "darwin", "linux"],
+  "cpu": ["x64", "arm64"],
+  "keywords": ["ai", "coding", "agent", "cli", "code-generation", "go"]
+}
