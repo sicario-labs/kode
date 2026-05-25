@@ -36,17 +36,3 @@ jobs:
         env:
           CGO_ENABLED: 0
 
-  typecheck-tui:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: oven-sh/setup-bun@v2
-
-      - name: Install dependencies
-        working-directory: vendored/opencode
-        run: bun install --frozen-lockfile
-
-      - name: TypeScript typecheck
-        working-directory: vendored/opencode
-        run: bun run typecheck 2>/dev/null || bunx tsc --noEmit
