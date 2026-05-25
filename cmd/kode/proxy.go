@@ -11,6 +11,7 @@ import (
 
 var goCommands = map[string]bool{
 	"plan":       true,
+	"init":       true,
 	"generate":   true,
 	"run":        true,
 	"verify":     true,
