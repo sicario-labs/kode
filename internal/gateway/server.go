@@ -115,8 +115,8 @@ func (s *Server) handleChat(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusTooManyRequests)
 			json.NewEncoder(w).Encode(map[string]string{
-				"error": "FreeUsageLimitError",
-				"message": "Free usage exceeded. Subscribe to Kode Go for $5/mo first month.",
+				"error": "LiteUsageLimitError",
+				"message": "Lite tier rate limit exceeded. Subscribe to Kode Pro for $10/mo.",
 			})
 			return
 		}

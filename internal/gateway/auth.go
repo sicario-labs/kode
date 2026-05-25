@@ -75,12 +75,12 @@ type APIKeyStore struct {
 }
 
 type APIKeyInfo struct {
-	Key      string `json:"key"`
-	Tier     Tier   `json:"tier"`
-	UserID   string `json:"user_id"`
-	Email    string `json:"email,omitempty"`
-	GoExpiry time.Time `json:"go_expiry,omitempty"`
-	ZenBalance int   `json:"zen_balance,omitempty"` // in cents
+	Key       string    `json:"key"`
+	Tier      Tier      `json:"tier"`
+	UserID    string    `json:"user_id"`
+	Email     string    `json:"email,omitempty"`
+	ProExpiry time.Time `json:"pro_expiry,omitempty"`
+	Balance   int       `json:"balance,omitempty"` // in cents (for tracked usage)
 }
 
 func NewAPIKeyStore() *APIKeyStore {
@@ -104,14 +104,14 @@ func (s *APIKeyStore) Add(info APIKeyInfo) {
 
 func ResolveTier(apiKey string, store *APIKeyStore) (Tier, string) {
 	if apiKey == "" || apiKey == "public" {
-		return TierFree, ""
+		return TierLite, ""
 	}
 	info, ok := store.Lookup(apiKey)
 	if !ok {
-		return TierFree, "unknown-key"
+		return TierLite, "unknown-key"
 	}
-	if info.Tier == TierGo && time.Now().After(info.GoExpiry) {
-		return TierFree, "go-expired"
+	if info.Tier == TierPro && time.Now().After(info.ProExpiry) {
+		return TierLite, "pro-expired"
 	}
 	return info.Tier, ""
 }
@@ -120,16 +120,14 @@ func ModelsForTier(catalog Catalog, tier Tier) []Model {
 	var out []Model
 	for _, m := range catalog.Models {
 		switch tier {
-		case TierFree:
-			if m.Tier == TierFree {
+		case TierLite:
+			if m.Tier == TierLite {
 				out = append(out, m)
 			}
-		case TierGo:
-			if m.Tier == TierFree || m.Tier == TierGo {
+		case TierPro:
+			if m.Tier == TierLite || m.Tier == TierPro {
 				out = append(out, m)
 			}
-		case TierZen:
-			out = append(out, m)
 		}
 	}
 	return out
@@ -159,10 +157,7 @@ func FormatIP(addr string) string {
 }
 
 func (s *APIKeyStore) SeedFromEnv() {
-	if key := os.Getenv("KODE_GO_API_KEY"); key != "" {
-		s.Add(APIKeyInfo{Key: key, Tier: TierGo, UserID: "seed-go", GoExpiry: time.Now().Add(365 * 24 * time.Hour)})
-	}
-	if key := os.Getenv("KODE_ZEN_API_KEY"); key != "" {
-		s.Add(APIKeyInfo{Key: key, Tier: TierZen, UserID: "seed-zen", ZenBalance: 50000}) // $500
+	if key := os.Getenv("KODE_PRO_API_KEY"); key != "" {
+		s.Add(APIKeyInfo{Key: key, Tier: TierPro, UserID: "seed-pro", ProExpiry: time.Now().Add(365 * 24 * time.Hour)})
 	}
 }
