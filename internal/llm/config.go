@@ -13,14 +13,24 @@ type Config struct {
 
 func DefaultConfig() Config {
 	key := os.Getenv("KODE_LLM_API_KEY")
-	if key == "" {
-		key = os.Getenv("OPENAI_API_KEY")
-	}
 	endpoint := os.Getenv("KODE_LLM_ENDPOINT")
+	model := os.Getenv("KODE_LLM_MODEL")
+	legacyKey := os.Getenv("OPENAI_API_KEY")
+
+	// Zero-config mode: no explicit key, no endpoint, no legacy key → gateway
+	if key == "" && endpoint == "" && legacyKey == "" && model == "" {
+		return Config{
+			APIKey:   "public",
+			Endpoint: "https://api.trykode.xyz/v1",
+			Model:    "deepseek-v4-flash",
+		}
+	}
 	if endpoint == "" {
 		endpoint = "https://api.openai.com/v1"
 	}
-	model := os.Getenv("KODE_LLM_MODEL")
+	if key == "" {
+		key = legacyKey
+	}
 	if model == "" {
 		model = "gpt-4o"
 	}
