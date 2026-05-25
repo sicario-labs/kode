@@ -32,7 +32,7 @@ func NewServer(catalog Catalog, upstream UpstreamConfig) *Server {
 		keyStore:     NewAPIKeyStore(),
 		upstream:     upstream,
 		litePool:     NewKeyPool(KeysFromEnv("KODE_LITE_KEYS")),
-		rateLimiter:  NewRateLimiter(100, 24*time.Hour),
+		rateLimiter:  NewRateLimiter(20, 24*time.Hour),
 		mux:          http.NewServeMux(),
 	}
 
@@ -116,9 +116,9 @@ func (s *Server) handleChat(w http.ResponseWriter, r *http.Request) {
 		if s.rateLimiter.Blocked(ip) {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusTooManyRequests)
-			json.NewEncoder(w).Encode(map[string]string{
+			json.NewEncoder(w).Encode(map[string]any{
 				"error": "LiteUsageLimitError",
-				"message": "Lite tier rate limit exceeded. Subscribe to Kode Pro for $10/mo.",
+				"message": "Lite tier rate limit reached (20 requests/day). Set KODE_PRO_API_KEY in your environment or upgrade to Kode Pro at https://trykode.xyz/pricing",
 			})
 			return
 		}
