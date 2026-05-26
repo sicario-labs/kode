@@ -1,6 +1,6 @@
 {
   "name": "@sicario-labs/kode",
-  "version": "3.1.2",
+  "version": "3.3.0",
   "description": "The safe AI coding agent — zero-config, gatekeeper-verified patches",
   "bin": {
     "kode": "cli.js"
