@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -228,8 +229,14 @@ func downloadAndExtract(url, destDir string) error {
 }
 
 func proxyTUI(tuiDir string, passthroughArgs []string) error {
-	entry := "./packages/opencode/src/index.ts"
+	selfPath, _ := os.Executable()
 
+	// Try compiled TUI binary first (instant, no bun needed)
+	if binary := findTUIBinary(tuiDir); binary != "" {
+		return runTUIBinary(binary, passthroughArgs, selfPath)
+	}
+
+	// Fall back to bun run with source files
 	bunPath, err := exec.LookPath("bun")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "TUI requires bun (JavaScript runtime).\n")
@@ -258,7 +265,7 @@ func proxyTUI(tuiDir string, passthroughArgs []string) error {
 		}
 	}
 
-	selfPath, _ := os.Executable()
+	entry := "./packages/opencode/src/index.ts"
 	bunArgs := append([]string{"run", "--conditions=browser", entry}, passthroughArgs...)
 
 	tsCmd := exec.Command(bunPath, bunArgs...)
@@ -269,6 +276,33 @@ func proxyTUI(tuiDir string, passthroughArgs []string) error {
 	tsCmd.Env = append(os.Environ(), fmt.Sprintf("KODE_BIN=%s", selfPath))
 
 	if err := tsCmd.Run(); err != nil {
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			os.Exit(exitErr.ExitCode())
+		}
+		return fmt.Errorf("TUI exited: %w", err)
+	}
+	return nil
+}
+
+func findTUIBinary(tuiDir string) string {
+	binName := "kode-tui"
+	if runtime.GOOS == "windows" {
+		binName = "kode-tui.exe"
+	}
+	candidate := filepath.Join(tuiDir, "bin", binName)
+	if info, err := os.Stat(candidate); err == nil && !info.IsDir() {
+		return candidate
+	}
+	return ""
+}
+
+func runTUIBinary(binary string, args []string, selfPath string) error {
+	cmd := exec.Command(binary, args...)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Env = append(os.Environ(), fmt.Sprintf("KODE_BIN=%s", selfPath))
+	if err := cmd.Run(); err != nil {
 		if exitErr, ok := err.(*exec.ExitError); ok {
 			os.Exit(exitErr.ExitCode())
 		}

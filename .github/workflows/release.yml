@@ -77,6 +77,14 @@ jobs:
           cp -r vendored/opencode/patches dist/tui/patches
           cp vendored/opencode/tsconfig.json dist/tui/ 2>/dev/null || true
 
+      - name: Compile TUI binary for current platform
+        working-directory: vendored/opencode/packages/opencode
+        run: |
+          bun run script/build.ts --single --skip-embed-web-ui --skip-install
+          mkdir -p ../../../../dist/tui/bin
+          cp dist/*/bin/opencode ../../../../dist/tui/bin/kode-tui
+          chmod +x ../../../../dist/tui/bin/kode-tui 2>/dev/null || true
+
       - name: Compress TUI bundle
         run: |
           cd dist
