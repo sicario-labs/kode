@@ -57,7 +57,7 @@ async function main() {
   }
 
   // Step 2: Download and extract TUI bundle to ~/.kode/tui/
-  if (!existsSync(join(tuiDir, "package.json"))) {
+  if (!existsSync(join(tuiDir, "package.json")) || !existsSync(join(tuiDir, "patches"))) {
     const bundleName = "tui-bundle.tar.gz";
     console.log(`Downloading TUI bundle (~52 MB)...`);
     const bundlePath = join(os.tmpdir(), bundleName);
