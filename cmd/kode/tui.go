@@ -28,14 +28,18 @@ Additional arguments after -- are passed through to the TUI.
 
 On first run, the TUI bundle is automatically downloaded from GitHub Releases.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			tuiDir, err := resolveTUIDir()
-			if err != nil {
-				return err
-			}
-			return proxyTUI(tuiDir, args)
+			return runTUI(args)
 		},
 	}
 	rootCmd.AddCommand(tuiCmd)
+}
+
+func runTUI(args []string) error {
+	tuiDir, err := resolveTUIDir()
+	if err != nil {
+		return err
+	}
+	return proxyTUI(tuiDir, args)
 }
 
 func resolveTUIDir() (string, error) {

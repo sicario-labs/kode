@@ -26,7 +26,9 @@ Built as a functional architecture hijack of opencode, Kode replaces the
 Unknown commands are forwarded to the vendored opencode TypeScript CLI, giving you
 access to all opencode features (models, providers, sessions, agents, etc.).`,
 	Run: func(cmd *cobra.Command, args []string) {
-		cmd.Help()
+		if err := runTUI(args); err != nil {
+			cmd.Help()
+		}
 	},
 	Version: version,
 }
