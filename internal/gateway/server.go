@@ -12,11 +12,12 @@ import (
 )
 
 type UpstreamConfig struct {
-	OpenAIKey    string
-	AnthropicKey string
-	DeepSeekKey  string
-	GoogleKey    string
-	WebhookURL   string
+	OpenAIKey      string
+	AnthropicKey   string
+	DeepSeekKey    string
+	GoogleKey      string
+	OpenRouterKey  string
+	WebhookURL     string
 }
 
 type logEntry struct {
@@ -218,7 +219,7 @@ func (s *Server) handleChat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if model.Tier == TierLite {
+	if model.Tier == TierLite && model.Provider != "openrouter" {
 		s.proxyToOpenModel(w, r, body, model)
 		return
 	}
@@ -244,7 +245,7 @@ func (s *Server) resolveUpstream(modelID string) (string, string, error) {
 		return "", "", fmt.Errorf("unknown model: %s", modelID)
 	}
 
-	if model.Tier == TierLite {
+	if model.Tier == TierLite && model.Provider != "openrouter" {
 		key := s.litePool.Next()
 		if key == "" {
 			return "", "", fmt.Errorf("no Lite pool keys available")
@@ -259,6 +260,8 @@ func (s *Server) resolveUpstream(modelID string) (string, string, error) {
 		return "https://api.anthropic.com/v1/messages", s.upstream.AnthropicKey, nil
 	case "deepseek":
 		return "https://api.deepseek.com/v1/chat/completions", s.upstream.DeepSeekKey, nil
+	case "openrouter":
+		return "https://openrouter.ai/api/v1/chat/completions", s.upstream.OpenRouterKey, nil
 	default:
 		return "", "", fmt.Errorf("no upstream for provider: %s", model.Provider)
 	}

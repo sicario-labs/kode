@@ -16,10 +16,11 @@ func main() {
 	}
 
 	upstream := gateway.UpstreamConfig{
-		OpenAIKey:    os.Getenv("OPENAI_API_KEY"),
-		AnthropicKey: os.Getenv("ANTHROPIC_API_KEY"),
-		DeepSeekKey:  os.Getenv("DEEPSEEK_API_KEY"),
-		GoogleKey:    os.Getenv("GOOGLE_API_KEY"),
+		OpenAIKey:      os.Getenv("OPENAI_API_KEY"),
+		AnthropicKey:   os.Getenv("ANTHROPIC_API_KEY"),
+		DeepSeekKey:    os.Getenv("DEEPSEEK_API_KEY"),
+		GoogleKey:      os.Getenv("GOOGLE_API_KEY"),
+		OpenRouterKey:  os.Getenv("OPENROUTER_API_KEY"),
 	}
 
 	srv := gateway.NewServer(gateway.DefaultCatalog, upstream)
