@@ -1,0 +1,9 @@
+﻿name: Test Tag Trigger
+on:
+  push:
+    tags: ["v*"]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Tag trigger works!"
