@@ -55,13 +55,13 @@ func (w *WorktreeManager) Create(ctx context.Context, spec BranchSpec) (string, 
 		os.RemoveAll(worktreePath)
 	}
 
-	gitExec(ctx, w.repoDir, "git", "switch", "--orphan", branchName)
-	gitExec(ctx, w.repoDir, "git", "rm", "-rf", ".")
-	gitExec(ctx, w.repoDir, "git", "checkout", "-b", branchName)
+	// Create branch from HEAD and add worktree
+	gitExec(ctx, w.repoDir, "git", "branch", branchName)
 
-	_, err := gitExec(ctx, w.repoDir, "git", "worktree", "add", worktreePath, "HEAD")
+	_, err := gitExec(ctx, w.repoDir, "git", "worktree", "add", worktreePath, branchName)
 	if err != nil {
-		gitExec(ctx, w.repoDir, "git", "checkout", "-b", branchName)
+		gitExec(ctx, w.repoDir, "git", "branch", "-D", branchName)
+		gitExec(ctx, w.repoDir, "git", "branch", branchName)
 		if out2, err2 := gitExec(ctx, w.repoDir, "git", "worktree", "add", worktreePath, branchName); err2 != nil {
 			return "", fmt.Errorf("create worktree: %s: %w", string(out2), err2)
 		}
