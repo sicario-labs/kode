@@ -104,9 +104,13 @@ jobs:
 
       - name: Compile TUI binary (arm64 via QEMU)
         if: matrix.tui_os == 'linux' && matrix.tui_arch == 'arm64'
+        env:
+          KODE_CHANNEL: latest
+          KODE_VERSION: ${{ github.ref_name }}
         run: |
           mkdir -p dist
           docker run --rm --platform linux/arm64 \
+            -e KODE_CHANNEL -e KODE_VERSION \
             -v ${{ github.workspace }}:/workspace \
             -w /workspace/vendored/opencode/packages/opencode \
             oven/bun:latest \
