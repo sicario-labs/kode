@@ -1,5 +1,5 @@
 const { execFile, spawnSync } = require("child_process");
-const { existsSync, chmodSync, mkdirSync, createWriteStream } = require("fs");
+const { existsSync, chmodSync, mkdirSync, createWriteStream, readFileSync } = require("fs");
 const { join } = require("path");
 const os = require("os");
 const https = require("https");
@@ -57,7 +57,10 @@ async function main() {
   }
 
   // Step 2: Download and extract TUI bundle to ~/.kode/tui/
-  if (!existsSync(join(tuiDir, "package.json")) || !existsSync(join(tuiDir, "patches"))) {
+  const versionFile = join(tuiDir, ".kode-version");
+  let installedVersion = "";
+  try { installedVersion = readFileSync(versionFile, "utf8").trim(); } catch {}
+  if (installedVersion !== version) {
     const bundleName = "tui-bundle.tar.gz";
     console.log(`Downloading TUI bundle (~52 MB)...`);
     const bundlePath = join(os.tmpdir(), bundleName);

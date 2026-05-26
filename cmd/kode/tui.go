@@ -99,10 +99,10 @@ func findTUIDir() (string, error) {
 			continue
 		}
 		if info, statErr := os.Stat(abs); statErr == nil && info.IsDir() {
-			// For downloaded bundles (~/.kode/tui/), verify patches/ exists
-			// to detect stale downloads from before patches were included.
+			// For downloaded bundles (~/.kode/tui/), verify version matches
 			if bundleDir != "" && abs == bundleDir {
-				if _, err := os.Stat(filepath.Join(abs, "patches")); os.IsNotExist(err) {
+				match, _ := versionMatches(abs)
+				if !match {
 					continue
 				}
 			}
@@ -122,9 +122,10 @@ func ensureTUI() (string, error) {
 	kodeDir := filepath.Join(homeDir, ".kode")
 	tuiDir := filepath.Join(kodeDir, tuiDirName)
 
-	// Already exists? Verify complete (patches/ present as migration marker)
+	// Already exists? Verify version matches
 	if info, err := os.Stat(tuiDir); err == nil && info.IsDir() {
-		if _, err := os.Stat(filepath.Join(tuiDir, "patches")); err == nil {
+		match, _ := versionMatches(tuiDir)
+		if match {
 			return tuiDir, nil
 		}
 		// Stale download — remove and re-download
@@ -282,6 +283,17 @@ func proxyTUI(tuiDir string, passthroughArgs []string) error {
 		return fmt.Errorf("TUI exited: %w", err)
 	}
 	return nil
+}
+
+func versionMatches(tuiDir string) (bool, error) {
+	if version == "" || version == "dev" || version == "none" {
+		return true, nil
+	}
+	data, err := os.ReadFile(filepath.Join(tuiDir, ".kode-version"))
+	if err != nil {
+		return false, err
+	}
+	return strings.TrimSpace(string(data)) == version, nil
 }
 
 func findTUIBinary(tuiDir string) string {

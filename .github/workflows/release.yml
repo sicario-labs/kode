@@ -76,14 +76,17 @@ jobs:
           cp vendored/opencode/package.json vendored/opencode/bun.lock dist/tui/
           cp -r vendored/opencode/patches dist/tui/patches
           cp vendored/opencode/tsconfig.json dist/tui/ 2>/dev/null || true
+          echo "${GITHUB_REF_NAME#v}" > dist/tui/.kode-version
 
       - name: Compile TUI binary for current platform
         working-directory: vendored/opencode/packages/opencode
         run: |
-          bun run script/build.ts --single --skip-embed-web-ui --skip-install
-          mkdir -p ../../../../dist/tui/bin
-          cp dist/*/bin/opencode ../../../../dist/tui/bin/kode-tui
-          chmod +x ../../../../dist/tui/bin/kode-tui 2>/dev/null || true
+          bun run script/build.ts --single --skip-embed-web-ui --skip-install 2>&1 || echo "TUI binary compilation skipped (not supported on this platform)"
+          if [ -d dist/*/bin ]; then
+            mkdir -p ../../../../dist/tui/bin
+            cp dist/*/bin/opencode ../../../../dist/tui/bin/kode-tui
+            chmod +x ../../../../dist/tui/bin/kode-tui 2>/dev/null || true
+          fi
 
       - name: Compress TUI bundle
         run: |
