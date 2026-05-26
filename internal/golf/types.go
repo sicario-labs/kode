@@ -5,8 +5,8 @@ import "time"
 type OptimizeTarget string
 
 const (
-	OptimizeSpeed     OptimizeTarget = "speed"
-	OptimizeMemory    OptimizeTarget = "memory"
+	OptimizeSpeed      OptimizeTarget = "speed"
+	OptimizeMemory     OptimizeTarget = "memory"
 	OptimizeComplexity OptimizeTarget = "complexity"
 )
 
@@ -33,11 +33,11 @@ type BranchBench struct {
 }
 
 type GolfSummary struct {
-	File      string        `json:"file"`
-	Target    OptimizeTarget `json:"target"`
-	Baseline  []BenchResult  `json:"baseline"`
-	Branches  []BranchBench  `json:"branches"`
-	Winner    string         `json:"winner"`
-	Improvement float64      `json:"improvement_pct"`
-	TotalTime time.Duration  `json:"total_time"`
+	File        string         `json:"file"`
+	Target      OptimizeTarget `json:"target"`
+	Baseline    []BenchResult  `json:"baseline"`
+	Branches    []BranchBench  `json:"branches"`
+	Winner      string         `json:"winner"`
+	Improvement float64        `json:"improvement_pct"`
+	TotalTime   time.Duration  `json:"total_time"`
 }

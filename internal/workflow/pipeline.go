@@ -6,6 +6,9 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
+	"strconv"
+	"strings"
 	"time"
 
 	kodecontext "github.com/kode/kode/internal/context"
@@ -275,6 +278,57 @@ func (p *Pipeline) Run(ctx context.Context, task string) (*Result, error) {
 		fn(state, nil)
 	}
 
+	// Stage: Bench — golf gate (performance regression check)
+	if p.config.EnableGolfGate && absDir != "" {
+		state.CurrentStage = StageBench
+		if fn, ok := p.beforeStage[StageBench]; ok {
+			fn(state)
+		}
+
+		currentBaseline := state.BaselineResults
+		if len(currentBaseline) == 0 {
+			currentBaseline = p.config.BaselineResults
+		}
+
+		benchResults, benchErr := runBenchmarks(absDir, testCmd)
+		if benchErr == nil {
+			state.BenchResults = benchResults
+
+			// Compare to baseline if available
+			if len(currentBaseline) > 0 && len(benchResults) > 0 {
+				_, _, countTotal := compareBenchs(currentBaseline, benchResults)
+				if countTotal > 0 {
+					regressions := 0
+					for _, b := range benchResults {
+						delta := findDelta(currentBaseline, benchResults, b.Name)
+						if delta < -p.config.GolfThreshold {
+							regressions++
+						}
+					}
+					if regressions > 0 {
+						err := fmt.Errorf("golf gate: %d benchmark(s) regressed beyond %.0f%% threshold", regressions, p.config.GolfThreshold)
+						state.Errors = append(state.Errors, err.Error())
+						if restoreErr := snapshot.Restore(absDir); restoreErr != nil {
+							state.Errors = append(state.Errors, fmt.Sprintf("rollback incomplete: %v", restoreErr))
+						}
+						if fn, ok := p.afterStage[StageBench]; ok {
+							fn(state, err)
+						}
+						return &Result{
+							Status:   execution.StatusFail,
+							State:    state,
+							Duration: time.Since(state.StartTime),
+						}, err
+					}
+				}
+			}
+		}
+
+		if fn, ok := p.afterStage[StageBench]; ok {
+			fn(state, nil)
+		}
+	}
+
 	return &Result{
 		Status:     execution.StatusPass,
 		State:      state,
@@ -334,7 +388,7 @@ func (s *State) WithContext(projectRoot string) *State {
 }
 
 func AllStages() []Stage {
-	return []Stage{StagePlan, StageCritique, StageGenerate, StageVerify, StageApply, StageTest}
+	return []Stage{StagePlan, StageCritique, StageGenerate, StageVerify, StageApply, StageTest, StageBench}
 }
 
 func (p *Pipeline) callLLM(ctx context.Context, client *llm.Client, req llm.ChatRequest) (*llm.ChatResponse, error) {
@@ -343,4 +397,116 @@ func (p *Pipeline) callLLM(ctx context.Context, client *llm.Client, req llm.Chat
 		return r.Chat(ctx, req)
 	}
 	return client.ChatWithRetry(ctx, req, llm.DefaultRetryConfig())
+}
+
+// --- Golf gate helpers (benchmark runner + comparison) ---
+
+var benchLine = regexp.MustCompile(`^Benchmark(\S+)\s+(\d+)\s+([\d.]+)\s+ns/op(?:\s+(\d+)\s+[A-Za-z]+/op)?(?:\s+(\d+)\s+[A-Za-z]+/op)?`)
+
+func runBenchmarks(dir, testCmd string) ([]BenchResult, error) {
+	parts := strings.Fields(testCmd)
+	if len(parts) == 0 {
+		parts = []string{"go", "test", "-bench=.", "-benchmem", "-benchtime=100ms"}
+	} else {
+		clean := make([]string, 0, len(parts)+3)
+		for _, p := range parts {
+			if !strings.HasPrefix(p, "-bench") && !strings.HasPrefix(p, "-benchmem") {
+				clean = append(clean, p)
+			}
+		}
+		clean = append(clean, "-bench=.", "-benchmem", "-benchtime=100ms", "./...")
+		parts = clean
+	}
+
+	out, err := exec.Command(parts[0], parts[1:]...).CombinedOutput()
+	output := string(out)
+
+	if err != nil {
+		shortParts := parts[:len(parts)-1]
+		out2, err2 := exec.Command(shortParts[0], shortParts[1:]...).CombinedOutput()
+		if err2 != nil {
+			return nil, fmt.Errorf("benchmark failed: %w\nOutput: %s", err, output)
+		}
+		output = string(out2)
+	}
+
+	return parseBenchOutput(output), nil
+}
+
+func parseBenchOutput(output string) []BenchResult {
+	var results []BenchResult
+	seen := make(map[string]bool)
+
+	for _, line := range strings.Split(output, "\n") {
+		matches := benchLine.FindStringSubmatch(line)
+		if matches == nil {
+			continue
+		}
+
+		name := matches[1]
+		nsPerOp, _ := strconv.ParseFloat(matches[3], 64)
+		var allocBPO, allocsPO int
+		if len(matches) >= 6 {
+			allocBPO, _ = strconv.Atoi(matches[4])
+			allocsStr := strings.TrimSpace(matches[5])
+			if f, err := strconv.ParseFloat(allocsStr, 64); err == nil {
+				allocsPO = int(f)
+			}
+		}
+
+		if !seen[name] {
+			seen[name] = true
+			results = append(results, BenchResult{
+				Name:     name,
+				NSPerOp:  nsPerOp,
+				AllocBPO: allocBPO,
+				AllocsPO: allocsPO,
+			})
+		}
+	}
+
+	return results
+}
+
+func findDelta(baseline, optimized []BenchResult, name string) float64 {
+	optMap := make(map[string]BenchResult)
+	for _, o := range optimized {
+		optMap[o.Name] = o
+	}
+	baseMap := make(map[string]BenchResult)
+	for _, b := range baseline {
+		baseMap[b.Name] = b
+	}
+	base, baseOk := baseMap[name]
+	opt, optOk := optMap[name]
+	if !baseOk || !optOk || base.NSPerOp == 0 {
+		return 0
+	}
+	return (base.NSPerOp - opt.NSPerOp) / base.NSPerOp * 100.0
+}
+
+func compareBenchs(baseline, optimized []BenchResult) (improvementPct float64, countImproved int, countTotal int) {
+	baseMap := make(map[string]BenchResult)
+	for _, b := range baseline {
+		baseMap[b.Name] = b
+	}
+
+	var totalImprovement float64
+	for _, opt := range optimized {
+		base, ok := baseMap[opt.Name]
+		if !ok || base.NSPerOp == 0 {
+			continue
+		}
+		countTotal++
+		diff := (base.NSPerOp - opt.NSPerOp) / base.NSPerOp * 100.0
+		if diff > 0 {
+			countImproved++
+		}
+		totalImprovement += diff
+	}
+
+	if countTotal > 0 {
+		improvementPct = totalImprovement / float64(countTotal)
+	}
+	return
 }

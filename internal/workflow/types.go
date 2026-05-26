@@ -17,17 +17,27 @@ const (
 	StageVerify   Stage = "verify"
 	StageApply    Stage = "apply"
 	StageTest     Stage = "test"
+	StageBench    Stage = "bench"
 )
 
+type BenchResult struct {
+	Name     string  `json:"name"`
+	NSPerOp  float64 `json:"ns_per_op"`
+	AllocBPO int     `json:"alloc_bpo"`
+	AllocsPO int     `json:"allocs_po"`
+}
+
 type State struct {
-	CurrentStage Stage
-	TaskID       string
-	ProjectRoot  string
-	Task         string
-	Hunks        []execution.StructuredHunk
-	Summary      *execution.ExecutionSummary
-	Errors       []string
-	StartTime    time.Time
+	CurrentStage    Stage
+	TaskID          string
+	ProjectRoot     string
+	Task            string
+	Hunks           []execution.StructuredHunk
+	Summary         *execution.ExecutionSummary
+	Errors          []string
+	StartTime       time.Time
+	BenchResults    []BenchResult  `json:"bench_results,omitempty"`
+	BaselineResults []BenchResult `json:"baseline_results,omitempty"`
 }
 
 type Config struct {
@@ -40,6 +50,9 @@ type Config struct {
 	TokenBudget        *llm.TokenBudget
 	EnableContextIndex bool
 	RouterConfig       *router.RouteConfig
+	EnableGolfGate     bool
+	GolfThreshold      float64
+	BaselineResults    []BenchResult
 }
 
 type Result struct {

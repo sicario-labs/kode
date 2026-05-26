@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-var benchLine = regexp.MustCompile(`^Benchmark(\S+)\s+(\d+)\s+([\d.]+)\s+ns/op(?:\s+(\d+)\s+([\d.]+)\s+[A-Z]+/op)?`)
+var benchLine = regexp.MustCompile(`^Benchmark(\S+)\s+(\d+)\s+([\d.]+)\s+ns/op(?:\s+(\d+)\s+[A-Za-z]+/op)?(?:\s+(\d+)\s+[A-Za-z]+/op)?`)
 
 func RunBenchmarks(dir, testCmd string) ([]BenchResult, error) {
 	parts := strings.Fields(testCmd)
