@@ -91,9 +91,12 @@ jobs:
 
       - name: Compile TUI binary (native)
         if: matrix.tui_os != 'linux' || matrix.tui_arch != 'arm64'
+        env:
+          KODE_CHANNEL: latest
+          KODE_VERSION: ${{ github.ref_name }}
         working-directory: vendored/opencode/packages/opencode
         run: |
-          bun run script/build.ts --single --skip-embed-web-ui --skip-install 2>&1
+          V="${KODE_VERSION#v}" && KODE_VERSION="$V" bun run script/build.ts --single --skip-embed-web-ui --skip-install 2>&1
           mkdir -p ../../../../dist
           cp dist/*/bin/opencode${{ matrix.ext }} ../../../../dist/kode-tui-${{ matrix.tui_os }}-${{ matrix.tui_arch }}${{ matrix.ext }}
         shell: bash
@@ -108,9 +111,10 @@ jobs:
           KODE_CHANNEL: latest
           KODE_VERSION: ${{ github.ref_name }}
         run: |
+          V="${KODE_VERSION#v}"
           mkdir -p dist
           docker run --rm --platform linux/arm64 \
-            -e KODE_CHANNEL -e KODE_VERSION \
+            -e KODE_CHANNEL -e KODE_VERSION="$V" \
             -v ${{ github.workspace }}:/workspace \
             -w /workspace/vendored/opencode/packages/opencode \
             oven/bun:latest \
