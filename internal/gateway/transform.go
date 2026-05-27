@@ -24,6 +24,8 @@ func (s *Server) proxyToOpenModel(w http.ResponseWriter, r *http.Request, body [
 		return
 	}
 
+	isStream, _ := openAIReq["stream"].(bool)
+
 	var upstreamURL string
 	var upstreamBody []byte
 
@@ -107,8 +109,6 @@ func (s *Server) proxyToOpenModel(w http.ResponseWriter, r *http.Request, body [
 				delete(msg, "tools")
 			}
 		}
-		// Remove unsupported fields
-		delete(msg, "stream")
 		delete(msg, "temperature")
 		delete(msg, "top_p")
 		delete(msg, "stream_options")
@@ -176,9 +176,86 @@ func (s *Server) proxyToOpenModel(w http.ResponseWriter, r *http.Request, body [
 			return
 		}
 		openAIResp := convertAnthropicToOpenAI(anthResp, openAIReq)
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(openAIResp)
+
+		if isStream {
+			// Stream as OpenAI Chat Completions SSE chunks
+			flusher, _ := w.(http.Flusher)
+			w.Header().Set("Content-Type", "text/event-stream")
+			w.Header().Set("Cache-Control", "no-cache")
+			w.Header().Set("Connection", "keep-alive")
+
+			// Chunk 1: role-only to signal streaming start
+			roleChunk := buildChunk(anthResp, openAIReq, map[string]any{"role": "assistant"}, nil, nil)
+			if d, _ := json.Marshal(roleChunk); d != nil {
+				fmt.Fprintf(w, "data: %s\n\n", d)
+				if flusher != nil {
+					flusher.Flush()
+				}
+			}
+
+			// Chunk 2: full content + finish reason + usage
+			choices := openAIResp["choices"].([]any)
+			fr := "stop"
+			if len(choices) > 0 {
+				if c, ok := choices[0].(map[string]any); ok {
+					if r, ok := c["finish_reason"].(string); ok {
+						fr = r
+					}
+				}
+			}
+			usage := openAIResp["usage"]
+			contentChunk := buildChunk(anthResp, openAIReq, map[string]any{"content": contentFrom(openAIResp)}, &fr, usage)
+			if d, _ := json.Marshal(contentChunk); d != nil {
+				fmt.Fprintf(w, "data: %s\n\n", d)
+				if flusher != nil {
+					flusher.Flush()
+				}
+			}
+
+			// Terminator
+			fmt.Fprintf(w, "data: [DONE]\n\n")
+			if flusher != nil {
+				flusher.Flush()
+			}
+		} else {
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(openAIResp)
+		}
 	}
+}
+
+func buildChunk(anthResp, origReq map[string]any, delta map[string]any, finishReason *string, usage any) map[string]any {
+	id, _ := anthResp["id"].(string)
+	model, _ := origReq["model"].(string)
+	choices := []any{
+		map[string]any{
+			"index":          0,
+			"delta":          delta,
+			"finish_reason":  finishReason,
+		},
+	}
+	chunk := map[string]any{
+		"id":      id,
+		"object":  "chat.completion.chunk",
+		"created": time.Now().Unix(),
+		"model":   model,
+		"choices": choices,
+	}
+	if usage != nil {
+		chunk["usage"] = usage
+	}
+	return chunk
+}
+
+func contentFrom(openAIResp map[string]any) string {
+	choices, _ := openAIResp["choices"].([]any)
+	if len(choices) == 0 {
+		return ""
+	}
+	c, _ := choices[0].(map[string]any)
+	msg, _ := c["message"].(map[string]any)
+	content, _ := msg["content"].(string)
+	return content
 }
 
 func convertAnthropicToOpenAI(anthResp map[string]any, origReq map[string]any) map[string]any {
