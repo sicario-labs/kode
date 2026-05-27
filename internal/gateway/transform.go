@@ -40,6 +40,30 @@ func (s *Server) proxyToOpenModel(w http.ResponseWriter, r *http.Request, body [
 		if _, ok := msg["max_tokens"]; !ok {
 			msg["max_tokens"] = 4096
 		}
+		// Convert tool_choice from OpenAI string/object to Anthropic object form.
+		// OpenAI: "auto" | "none" | "required" | { type: "function", function: { name } }
+		// Anthropic: { type: "auto" } | { type: "any" } | { type: "tool", name } | omit
+		if tc, ok := msg["tool_choice"]; ok {
+			switch v := tc.(type) {
+			case string:
+				switch v {
+				case "auto":
+					msg["tool_choice"] = map[string]any{"type": "auto"}
+				case "required":
+					msg["tool_choice"] = map[string]any{"type": "any"}
+				case "none":
+					delete(msg, "tool_choice")
+				}
+			case map[string]any:
+				if t, _ := v["type"].(string); t == "function" {
+					if fn, ok := v["function"].(map[string]any); ok {
+						if name, _ := fn["name"].(string); name != "" {
+							msg["tool_choice"] = map[string]any{"type": "tool", "name": name}
+						}
+					}
+				}
+			}
+		}
 		// Anthropic uses a separate 'system' field instead of system role in messages
 		if msgs, ok := msg["messages"].([]any); ok {
 			var filtered []any
