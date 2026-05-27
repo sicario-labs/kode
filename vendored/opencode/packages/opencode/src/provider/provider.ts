@@ -1295,7 +1295,7 @@ export const layer = Layer.effect(
             providers[providerID] = mergeDeep(existing, provider)
             return
           }
-          const match = database[providerID] || provider
+          const match = database[providerID]
           if (!match) return
           // @ts-expect-error
           providers[providerID] = mergeDeep(match, provider)
@@ -1489,6 +1489,7 @@ export const layer = Layer.effect(
           let data = database[providerID]
           if (!data) {
             data = { id: providerID, name: id, source: "custom", env: [], models: {}, options: {} }
+            database[providerID] = data as any
           }
           const result = yield* fn(data)
           if (result && (result.autoload || providers[providerID])) {
