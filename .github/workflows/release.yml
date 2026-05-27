@@ -85,7 +85,7 @@ jobs:
       - uses: oven-sh/setup-bun@v2
 
       - name: Install TUI dependencies
-        working-directory: vendored/opencode
+        working-directory: .
         run: bun install --frozen-lockfile
         shell: bash
 
@@ -94,11 +94,11 @@ jobs:
         env:
           KODE_CHANNEL: latest
           KODE_VERSION: ${{ github.ref_name }}
-        working-directory: vendored/opencode/packages/opencode
+        working-directory: packages/kode
         run: |
           V="${KODE_VERSION#v}" && KODE_VERSION="$V" bun run script/build.ts --single --skip-embed-web-ui --skip-install 2>&1
           mkdir -p ../../../../dist
-          cp dist/*/bin/opencode${{ matrix.ext }} ../../../../dist/kode-tui-${{ matrix.tui_os }}-${{ matrix.tui_arch }}${{ matrix.ext }}
+          cp dist/*/bin/kode${{ matrix.ext }} ../../dist/kode-tui-${{ matrix.tui_os }}-${{ matrix.tui_arch }}${{ matrix.ext }}
         shell: bash
 
       - name: Setup QEMU for arm64
@@ -116,9 +116,9 @@ jobs:
           docker run --rm --platform linux/arm64 \
             -e KODE_CHANNEL -e KODE_VERSION="$V" \
             -v ${{ github.workspace }}:/workspace \
-            -w /workspace/vendored/opencode/packages/opencode \
+            -w /workspace/packages/kode \
             oven/bun:latest \
-            sh -c "bun install --frozen-lockfile && bun run script/build.ts --single --skip-embed-web-ui --skip-install && cp dist/*/bin/opencode /workspace/dist/kode-tui-linux-arm64"
+            sh -c "bun install --frozen-lockfile && bun run script/build.ts --single --skip-embed-web-ui --skip-install && cp dist/*/bin/kode /workspace/dist/kode-tui-linux-arm64"
         shell: bash
 
       - name: Upload TUI binary
@@ -184,7 +184,7 @@ jobs:
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
           npm version "$VERSION" --no-git-tag-version --allow-same-version
-        working-directory: packages/npm
+        working-directory: packages/kode
 
       - name: Verify npm version with provenance support
         run: npm --version
@@ -196,4 +196,4 @@ jobs:
             *-*) TAG="next" ;;
           esac
           npm publish --provenance --access public --tag "$TAG"
-        working-directory: packages/npm
+        working-directory: packages/kode
