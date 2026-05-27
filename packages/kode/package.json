@@ -1,6 +1,6 @@
 {
   "$schema": "https://json.schemastore.org/package.json",
-  "version": "1.15.13",
+  "version": "1.15.14",
   "name": "@sicario-labs/kode",
   "type": "module",
   "license": "MIT",
