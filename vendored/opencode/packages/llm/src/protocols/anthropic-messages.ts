@@ -140,6 +140,7 @@ const AnthropicTool = Schema.Struct({
 type AnthropicTool = Schema.Schema.Type<typeof AnthropicTool>
 
 const AnthropicToolChoice = Schema.Union([
+  Schema.Literals(["auto", "any"]),
   Schema.Struct({ type: Schema.Literals(["auto", "any"]) }),
   Schema.Struct({ type: Schema.tag("tool"), name: Schema.String }),
 ])
