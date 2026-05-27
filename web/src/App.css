@@ -291,9 +291,9 @@ section + section {
 
 .hero-grid {
   display: grid;
-  grid-template-columns: 1.1fr 0.9fr;
-  gap: 48px;
-  align-items: start;
+  grid-template-columns: 0.9fr 1.3fr;
+  gap: 64px;
+  align-items: center;
 }
 
 .hero-badge {
@@ -922,7 +922,7 @@ section + section {
 /* Documentation Layout with Sticky Sidebar */
 .docs-container {
   display: grid;
-  grid-template-columns: 240px 1fr;
+  grid-template-columns: 220px 1fr 200px;
   gap: 48px;
   align-items: start;
   margin-top: 48px;
@@ -952,8 +952,36 @@ section + section {
   font-weight: 700;
 }
 
+.docs-toc {
+  position: sticky;
+  top: 104px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.docs-toc-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 8px;
+  font-family: var(--font-mono);
+}
+
+.docs-toc-link {
+  color: var(--mute);
+  text-decoration: none;
+  font-size: 13px;
+  transition: color 0.15s ease;
+  cursor: pointer;
+}
+
+.docs-toc-link.active, .docs-toc-link:hover {
+  color: var(--ink);
+}
+
 .docs-content {
-  max-width: 760px;
+  max-width: 720px;
 }
 
 .docs-section {
@@ -967,22 +995,41 @@ section + section {
 }
 
 .docs-code-block {
-  background: var(--surface-dark);
-  color: var(--on-dark);
-  padding: 16px 20px;
+  background: var(--canvas);
   border-radius: 4px;
   margin-bottom: 24px;
   font-size: 14px;
-  overflow-x: auto;
+  overflow: hidden;
   border: 1px solid var(--hairline);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.02);
 }
 
-.docs-code-block code {
+.docs-code-header {
+  background: var(--surface-soft);
+  border-bottom: 1px solid var(--hairline);
+  padding: 10px 16px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.mac-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--ash);
+  opacity: 0.5;
+}
+
+.docs-code-body {
+  padding: 16px 20px;
+  color: #8b5cf6;
+  overflow-x: auto;
   font-family: var(--font-mono);
 }
 
-.docs-code-block .prompt-sym {
-  color: var(--accent);
+.docs-code-body .prompt-sym {
+  color: var(--mute);
   margin-right: 8px;
   user-select: none;
 }
