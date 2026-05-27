@@ -11,18 +11,18 @@ export default function Features() {
   return (
     <section id="features">
       <div className="wrapper">
-        <div style={{ maxWidth: 680 }}>
+        <div className="features-list">
           <div className="heading-md" style={{ marginBottom: 24 }}>What is Kode?</div>
           <p className="body-md" style={{ marginBottom: 32 }}>
             Kode is an open source agent that helps you write code in your terminal. Every generated patch runs through a compiled Go verification gate before it touches your filesystem — a safety guarantee no TS-only tool can offer.
           </p>
           {features.map(f => (
-            <div key={f.label} style={{ padding: '8px 0', display: 'flex', gap: 24 }}>
-              <span style={{ color: 'var(--ink)', flexShrink: 0 }}>[+]</span>
+            <div key={f.label} className="feature-row">
+              <span className="marker">[+]</span>
               <div>
-                <span style={{ fontWeight: 500, color: 'var(--ink)' }}>{f.label}</span>
+                <span className="label">{f.label}</span>
                 <br />
-                <span style={{ color: 'var(--body)' }}>{f.desc}</span>
+                <span className="desc">{f.desc}</span>
               </div>
             </div>
           ))}

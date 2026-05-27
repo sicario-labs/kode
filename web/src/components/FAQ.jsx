@@ -17,29 +17,19 @@ export default function FAQ() {
   return (
     <section id="faq">
       <div className="wrapper">
-        <div style={{ maxWidth: 680 }}>
+        <div className="features-list">
           <div className="heading-md" style={{ marginBottom: 24 }}>FAQ</div>
           {faqs.map((item, i) => (
-            <div key={i} style={{ borderBottom: '1px solid var(--hairline)', padding: '12px 0' }}>
-              <button onClick={() => setOpen(open === i ? null : i)}
-                style={{
-                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                  width: '100%', textAlign: 'left',
-                  background: 'none', border: 'none', cursor: 'pointer',
-                  color: 'var(--ink)', fontSize: 16, fontWeight: 400, lineHeight: 1.5,
-                  padding: 0, fontFamily: 'var(--font-mono)',
-                }}
-                onMouseEnter={e => e.target.style.color = 'var(--charcoal)'}
-                onMouseLeave={e => e.target.style.color = 'var(--ink)'}>
+            <div key={i} className={`faq-item ${open === i ? 'open' : ''}`}>
+              <button
+                onClick={() => setOpen(open === i ? null : i)}
+                className="faq-question"
+              >
                 {item.q}
                 <span>{open === i ? '\u2212' : '+'}</span>
               </button>
-              <div style={{
-                maxHeight: open === i ? 300 : 0,
-                overflow: 'hidden',
-                transition: 'max-height 0.25s ease',
-              }}>
-                <p style={{ paddingTop: 12, color: 'var(--body)', fontSize: 16, lineHeight: 1.5, maxWidth: 640 }}>{item.a}</p>
+              <div className="faq-answer">
+                <p>{item.a}</p>
               </div>
             </div>
           ))}

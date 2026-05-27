@@ -18,12 +18,14 @@ export default function Home() {
       <Privacy />
       <section id="plans">
         <div className="wrapper">
-          <div style={{ maxWidth: 680 }}>
+          <div className="features-list">
             <div className="heading-md" style={{ marginBottom: 24 }}>[x] Plans & Pricing</div>
             <p className="body-md" style={{ marginBottom: 32 }}>
               Start for free, upgrade when you need more. Every tier includes the full Kode Gatekeeper engine.
             </p>
-            <PricingCards />
+          </div>
+          <PricingCards />
+          <div className="features-list">
             <div style={{
               fontSize: 14, color: 'var(--body)', lineHeight: 1.6,
               borderTop: '1px solid var(--hairline)', paddingTop: 16,

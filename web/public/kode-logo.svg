@@ -1,26 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 48" fill="none">
-  <!-- SHIELD: hexagon with < > bracket sides, all 4px -->
   <path d="M 22 4 L 46 4 L 56 18 L 50 36 L 34 46 L 18 36 L 12 18 Z"
         stroke="#ffffff" stroke-width="4" stroke-linejoin="miter" fill="none"/>
-
-  <!-- INNER K: diagonal arms anchor into shield frame (truss) -->
   <path d="M 27 37 L 27 13" stroke="#ffffff" stroke-width="4" stroke-linecap="square"/>
   <path d="M 27 19 L 51 11" stroke="#ffffff" stroke-width="4" stroke-linecap="square"/>
   <path d="M 27 31 L 48 37" stroke="#ffffff" stroke-width="4" stroke-linecap="square"/>
-
-  <!-- WORDMARK K -->
   <path d="M 66 6 L 66 42" stroke="#ffffff" stroke-width="4" stroke-linecap="square"/>
   <path d="M 70 20 L 86 8" stroke="#ffffff" stroke-width="4" stroke-linecap="square" stroke-linejoin="miter"/>
   <path d="M 70 24 L 86 40" stroke="#ffffff" stroke-width="4" stroke-linecap="square" stroke-linejoin="miter"/>
-
-  <!-- o: rx=3 subtle rounding, not circular. Bowl aligns to baseline. -->
   <rect x="98" y="10" width="22" height="32" rx="3" stroke="#ffffff" stroke-width="4" fill="none"/>
-
-  <!-- d: bowl left, stem right. No descender -- stem matches K baseline. -->
   <rect x="130" y="10" width="22" height="32" rx="3" stroke="#ffffff" stroke-width="4" fill="none"/>
   <path d="M 152 6 L 152 42" stroke="#ffffff" stroke-width="4" stroke-linecap="square"/>
-
-  <!-- e: open right side (C-shape bowl) + crossbar through opening -->
   <path d="M 184 10 L 164 10 Q 162 10 162 26 Q 162 42 164 42 L 184 42"
         stroke="#ffffff" stroke-width="4" fill="none" stroke-linecap="square"/>
   <path d="M 167 20 L 186 20" stroke="#ffffff" stroke-width="4" stroke-linecap="square"/>

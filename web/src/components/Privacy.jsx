@@ -2,7 +2,7 @@ export default function Privacy() {
   return (
     <section>
       <div className="wrapper">
-        <div style={{ maxWidth: 680 }}>
+        <div className="features-list">
           <span style={{ fontSize: 24, color: 'var(--ink)', marginBottom: 16, display: 'block' }}>[+]</span>
           <div className="heading-md" style={{ marginBottom: 16 }}>Built for privacy first</div>
           <p className="body-md">
