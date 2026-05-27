@@ -56,18 +56,59 @@ export default function Hero() {
 
           <div className="hero-right">
             <div className="tui-mockup">
-              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 32 }}>
-                <img src="/kode-logo.svg" alt="Kode" width="160" height="35" style={{ display: 'block' }} />
+              <div className="tui-titlebar">
+                <div className="tui-dots">
+                  <div className="tui-dot red"></div>
+                  <div className="tui-dot yellow"></div>
+                  <div className="tui-dot green"></div>
+                </div>
+                <div className="tui-title">kode tui - ~/projects/sicario</div>
               </div>
-              <div className="tui-prompt-row">
-                <span className="pipe">|</span>
-                <span className="cmd">kode loop &quot;add user authentication&quot;</span>
-                <span className="model">Claude 3.5 Sonnet</span>
-              </div>
-              <div className="tui-hints">
-                <span>tab  switch agent</span>
-                <span>ctrl-p  commands</span>
-                <span>KODE_BIN  gatekeeper active</span>
+              <div className="tui-body">
+                <div className="tui-sidebar">
+                  <div className="section-title">[-] WORKSPACE</div>
+                  <div>├─ [+] cmd/kode/</div>
+                  <div>├─ [+] internal/</div>
+                  <div>├─ [x] go.mod</div>
+                  <div>└─ [x] README.md</div>
+                  <br />
+                  <div className="section-title">[+] SESSIONS</div>
+                  <div>├─ [✓] add-auth (2m ago)</div>
+                  <div>└─ [✓] init-git (1d ago)</div>
+                </div>
+                <div className="tui-main">
+                  <div className="tui-output">
+                    <div className="tui-output-line" style={{ color: 'var(--mute)' }}>$ kode loop &quot;add user authentication&quot;</div>
+                    <br />
+                    <div className="tui-output-line" style={{ fontWeight: 700, color: 'var(--ink)' }}>PLANNING</div>
+                    <div className="tui-output-line success">[✓] Build surgical 8K context graph ..... [OK]</div>
+                    <div className="tui-output-line success">[✓] Validate request parameters ......... [OK]</div>
+                    <br />
+                    <div className="tui-output-line" style={{ fontWeight: 700, color: 'var(--ink)' }}>GENERATING</div>
+                    <div className="tui-output-line success">[✓] Generate patches via Claude 3.5 ..... [OK]</div>
+                    <br />
+                    <div className="tui-output-line" style={{ fontWeight: 700, color: 'var(--ink)' }}>VERIFYING (Go Gatekeeper)</div>
+                    <div className="tui-output-line success">├── Gate 1: Syntax compilation .......... [PASS]</div>
+                    <div className="tui-output-line success">├── Gate 2: Static linter check ......... [PASS]</div>
+                    <div className="tui-output-line success">├── Gate 3: Test runner execution ....... [PASS]</div>
+                    <div className="tui-output-line success">├── Gate 4: Blast radius control ........ [PASS]</div>
+                    <div className="tui-output-line success">└── Gate 5: TDD validation .............. [PASS]</div>
+                    <br />
+                    <div className="tui-output-line" style={{ fontWeight: 700, color: 'var(--ink)' }}>APPLY & TEST</div>
+                    <div className="tui-output-line success">[✓] Diffs successfully applied to disk</div>
+                    <div className="tui-output-line success">[✓] Tests passed. 0 failures.</div>
+                  </div>
+                  <div className="tui-composer">
+                    <div className="tui-composer-header">
+                      <span>[composer] Claude 3.5 Sonnet</span>
+                      <span>KODE_BIN active</span>
+                    </div>
+                    <div className="tui-composer-input">
+                      <span className="pipe">|</span>
+                      <span style={{ color: 'var(--on-dark)' }}>kode loop "add user authentication"</span>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
