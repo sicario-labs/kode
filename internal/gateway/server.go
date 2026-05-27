@@ -47,7 +47,7 @@ func NewServer(catalog Catalog, upstream UpstreamConfig) *Server {
 		keyStore:     NewAPIKeyStore(),
 		upstream:     upstream,
 		litePool:     NewKeyPool(KeysFromEnv("KODE_LITE_KEYS")),
-		rateLimiter:  NewRateLimiter(20, 24*time.Hour),
+		rateLimiter:  NewRateLimiter(10000, 24*time.Hour),
 		mux:          http.NewServeMux(),
 		monitor:      NewUsageMonitor(1000),
 	}
