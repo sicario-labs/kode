@@ -97,7 +97,7 @@ jobs:
         working-directory: packages/kode
         run: |
           V="${KODE_VERSION#v}" && KODE_VERSION="$V" bun run script/build.ts --single --skip-embed-web-ui --skip-install 2>&1
-          mkdir -p ../../../../dist
+          mkdir -p ../../dist
           cp dist/*/*/bin/kode${{ matrix.ext }} ../../dist/kode-tui-${{ matrix.tui_os }}-${{ matrix.tui_arch }}${{ matrix.ext }}
         shell: bash
 
