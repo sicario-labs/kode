@@ -1,5 +1,5 @@
 import * as path from "path"
-import { Effect, Schema } from "effect"
+import { Effect, Schema, Option } from "effect"
 import * as Tool from "./tool"
 import { Bus } from "../bus"
 import { FileWatcher } from "../file/watcher"
@@ -217,10 +217,10 @@ export const ApplyPatchTool = Tool.define(
       })
 
       // Kode Gatekeeper: verify proposed file changes before writing to disk
-      const config = yield* ConfigService.pipe(
-        Effect.flatMap((svc) => svc.get()),
-        Effect.catchAll(() => Effect.succeed(undefined)),
-      )
+      const configSvc = yield* Effect.serviceOption(ConfigService)
+      const config = Option.isSome(configSvc)
+        ? yield* configSvc.value.get().pipe(Effect.catch(() => Effect.succeed(undefined)))
+        : undefined
       const verifyFilesList = fileChanges
         .filter((c) => c.type !== "delete")
         .map((c) => ({ path: c.filePath, content: c.newContent }))

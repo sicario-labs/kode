@@ -53,6 +53,7 @@ type Config struct {
 	EnableGolfGate     bool
 	GolfThreshold      float64
 	BaselineResults    []BenchResult
+	AsyncTest          bool
 }
 
 type Result struct {

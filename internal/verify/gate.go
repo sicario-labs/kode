@@ -10,23 +10,25 @@ import (
 )
 
 type Gate struct {
-	diffApplier  *DiffApplier
-	syntax       *SyntaxChecker
-	imports      *ImportValidator
-	calls        *CallChecker
-	architecture *ArchitectureChecker
-	blastRadius  *BlastRadiusChecker
-	security     *SecurityChecker
+	diffApplier    *DiffApplier
+	syntax         *SyntaxChecker
+	imports        *ImportValidator
+	calls          *CallChecker
+	architecture   *ArchitectureChecker
+	blastRadius    *BlastRadiusChecker
+	security       *SecurityChecker
+	staticAnalysis *StaticAnalysisChecker
 }
 
 func NewGate(projectRoot string) *Gate {
 	return &Gate{
-		diffApplier:  NewDiffApplier(),
-		syntax:       NewSyntaxChecker(),
-		imports:      NewImportValidator(projectRoot),
-		calls:        NewCallChecker(projectRoot),
-		architecture: NewArchitectureChecker(),
-		security:     NewSecurityChecker(),
+		diffApplier:    NewDiffApplier(),
+		syntax:         NewSyntaxChecker(),
+		imports:        NewImportValidator(projectRoot),
+		calls:          NewCallChecker(projectRoot),
+		architecture:   NewArchitectureChecker(),
+		security:       NewSecurityChecker(),
+		staticAnalysis: NewStaticAnalysisChecker(projectRoot),
 	}
 }
 

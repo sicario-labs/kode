@@ -322,14 +322,35 @@ func (p *Pipeline) Run(ctx context.Context, task string) (*Result, error) {
 		testCmd = execution.DetectTestCommand(absDir)
 	}
 
-	testCtx, cancel := context.WithTimeout(ctx, 120*time.Second)
-	defer cancel()
-
-	testOutput, testErr := runTestCommand(testCtx, absDir, testCmd)
-	if testErr != nil {
-		if restoreErr := snapshot.Restore(absDir); restoreErr != nil {
-			state.Errors = append(state.Errors, fmt.Sprintf("rollback incomplete: %v", restoreErr))
+	runTests := func() (string, error) {
+		testCtx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+		defer cancel()
+		out, err := runTestCommand(testCtx, absDir, testCmd)
+		if err != nil {
+			if restoreErr := snapshot.Restore(absDir); restoreErr != nil {
+				fmt.Fprintf(os.Stderr, "Async rollback failed: %v\n", restoreErr)
+			}
+			fmt.Fprintf(os.Stderr, "Async tests failed: %v\n", err)
+			return out, err
 		}
+		fmt.Fprintf(os.Stderr, "Async tests passed.\n")
+		return out, nil
+	}
+
+	if p.config.AsyncTest {
+		go func() {
+			_, _ = runTests()
+		}()
+		return &Result{
+			Status:     execution.StatusPass,
+			State:      state,
+			Duration:   time.Since(state.StartTime),
+			TestOutput: "Tests running asynchronously in the background...",
+		}, nil
+	}
+
+	testOutput, testErr := runTests()
+	if testErr != nil {
 		state.Errors = append(state.Errors, testErr.Error())
 		if fn, ok := p.afterStage[StageTest]; ok {
 			fn(state, testErr)

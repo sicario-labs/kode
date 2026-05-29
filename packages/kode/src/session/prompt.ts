@@ -61,6 +61,7 @@ import { referencePromptMetadata, referenceTextPart } from "./prompt/reference"
 import { SessionReminders } from "./reminders"
 import { SessionTools } from "./tools"
 import { LLMEvent } from "@kode/llm"
+import { Auth } from "../auth"
 
 // @ts-ignore
 globalThis.AI_SDK_LOG_WARNINGS = false
@@ -1484,7 +1485,11 @@ export const layer = Layer.effect(
     const loop: (input: LoopInput) => Effect.Effect<MessageV2.WithParts> = Effect.fn("SessionPrompt.loop")(function* (
       input: LoopInput,
     ) {
-      return yield* state.ensureRunning(input.sessionID, lastAssistant(input.sessionID), runLoop(input.sessionID))
+      const session = yield* sessions.get(input.sessionID).pipe(Effect.orDie)
+      const onInterrupt = session.parentID
+        ? Effect.die(new DOMException("Aborted", "AbortError"))
+        : lastAssistant(input.sessionID)
+      return yield* state.ensureRunning(input.sessionID, onInterrupt, runLoop(input.sessionID))
     })
 
     const shell: (input: ShellInput) => Effect.Effect<MessageV2.WithParts, Session.BusyError> = Effect.fn(
@@ -1496,6 +1501,31 @@ export const layer = Layer.effect(
 
     const command = Effect.fn("SessionPrompt.command")(function* (input: CommandInput) {
       yield* elog.info("command", { sessionID: input.sessionID, command: input.command, agent: input.agent })
+      
+      if (input.command.startsWith("kode.")) {
+        const bin = input.command.replace("kode.", "")
+        const binaryPath = path.resolve(process.cwd(), "bin", process.platform === "win32" ? "kode.exe" : "kode")
+        
+        // Inject keys into process.env so kode.exe inherits them
+        const authSvc = yield* Effect.serviceOption(Auth.Service)
+        if (Option.isSome(authSvc)) {
+            const auths = yield* authSvc.value.all().pipe(Effect.catch(() => Effect.succeed({})))
+            if (auths["openai"]?.type === "api") process.env["OPENAI_API_KEY"] = auths["openai"].key
+            if (auths["anthropic"]?.type === "api") process.env["ANTHROPIC_API_KEY"] = auths["anthropic"].key
+        }
+
+        const sh: ShellInput = {
+          sessionID: input.sessionID,
+          messageID: input.messageID,
+          agent: input.agent ?? "primary",
+          command: `"${binaryPath}" ${bin} ${input.arguments}`,
+        }
+        if (input.model) {
+          sh.model = Provider.parseModel(input.model)
+        }
+        return yield* shell(sh)
+      }
+
       const cmd = yield* commands.get(input.command)
       if (!cmd) {
         const available = (yield* commands.list()).map((c) => c.name)

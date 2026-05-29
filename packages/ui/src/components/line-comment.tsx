@@ -1,5 +1,5 @@
-import { useFilteredList } from "@Kode-ai/ui/hooks"
-import { getDirectory, getFilename } from "@Kode-ai/core/util/path"
+import { useFilteredList } from "@kode/ui/hooks"
+import { getDirectory, getFilename } from "@kode/core/util/path"
 import { createSignal, For, onMount, Show, splitProps, type JSX } from "solid-js"
 import { Button } from "./button"
 import { FileIcon } from "./file-icon"

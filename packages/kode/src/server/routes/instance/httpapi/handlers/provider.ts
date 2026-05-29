@@ -6,29 +6,55 @@ import { ProviderID } from "@/provider/schema"
 import { mapValues } from "remeda"
 import { Effect, Schema } from "effect"
 
+const OPENMODEL_DEFS = [
+  { id: "claude-haiku-4-5-20251001", name: "Claude 4.5 Haiku (20251001)", family: "claude", context: 200000, maxOutput: 64000, inputCost: 1, outputCost: 5 },
+  { id: "claude-opus-4-6", name: "Claude 4.6 Opus", family: "claude", context: 1000000, maxOutput: 128000, inputCost: 5, outputCost: 25 },
+  { id: "claude-opus-4-7", name: "Claude 4.7 Opus", family: "claude", context: 1000000, maxOutput: 128000, inputCost: 5, outputCost: 25 },
+  { id: "claude-opus-4-8", name: "Claude 4.8 Opus", family: "claude", context: 1000000, maxOutput: 128000, inputCost: 5, outputCost: 25 },
+  { id: "claude-sonnet-4-6", name: "Claude 4.6 Sonnet", family: "claude", context: 1000000, maxOutput: 64000, inputCost: 3, outputCost: 15 },
+  { id: "deepseek-v4-flash", name: "DeepSeek V4 Flash", family: "deepseek-v4", context: 1000000, maxOutput: 8192, inputCost: 0.035, outputCost: 0.07 },
+  { id: "deepseek-v4-pro", name: "DeepSeek V4 Pro", family: "deepseek-v4", context: 1000000, maxOutput: 8192, inputCost: 0.435, outputCost: 0.87, reasoning: true },
+  { id: "gemini-3-flash-preview", name: "Gemini 3 Flash Preview", family: "gemini", context: 1000000, maxOutput: 65536, inputCost: 0.5, outputCost: 3 },
+  { id: "gemini-3.1-flash-lite-preview", name: "Gemini 3.1 Flash Lite Preview", family: "gemini", context: 1000000, maxOutput: 65536, inputCost: 0.25, outputCost: 1.5 },
+  { id: "gemini-3.1-pro-preview", name: "Gemini 3.1 Pro Preview", family: "gemini", context: 1000000, maxOutput: 65536, inputCost: 2, outputCost: 12 },
+  { id: "gemini-3.5-flash", name: "Gemini 3.5 Flash", family: "gemini", context: 1000000, maxOutput: 65536, inputCost: 1.5, outputCost: 9 },
+  { id: "gpt-5.3-codex", name: "GPT 5.3 Codex", family: "gpt-5", context: 272000, maxOutput: 128000, inputCost: 1.75, outputCost: 14 },
+  { id: "gpt-5.4", name: "GPT 5.4", family: "gpt-5", context: 1100000, maxOutput: 128000, inputCost: 2.5, outputCost: 15 },
+  { id: "gpt-5.4-mini", name: "GPT 5.4 Mini", family: "gpt-5", context: 272000, maxOutput: 128000, inputCost: 0.75, outputCost: 4.5 },
+  { id: "gpt-5.4-pro", name: "GPT 5.4 Pro", family: "gpt-5", context: 1100000, maxOutput: 128000, inputCost: 30, outputCost: 180 },
+  { id: "gpt-5.5", name: "GPT 5.5", family: "gpt-5", context: 1100000, maxOutput: 128000, inputCost: 5, outputCost: 30 },
+  { id: "mimo-v2-flash", name: "Mimo V2 Flash", family: "mimo", context: 262144, maxOutput: 16384, inputCost: 0.1, outputCost: 0.3 },
+  { id: "mimo-v2-omni", name: "Mimo V2 Omni", family: "mimo", context: 262144, maxOutput: 16384, inputCost: 0.4, outputCost: 2 },
+  { id: "mimo-v2-pro", name: "Mimo V2 Pro", family: "mimo", context: 1000000, maxOutput: 16384, inputCost: 1, outputCost: 3 },
+  { id: "mimo-v2.5", name: "Mimo V2.5", family: "mimo", context: 131072, maxOutput: 16384, inputCost: 0.14, outputCost: 0.28 }
+]
+
 const OPENMODEL_PROVIDER: ModelsDev.Provider = {
   id: "openmodel",
   name: "OpenModel",
   env: ["OPENMODEL_API_KEY"],
   npm: "@ai-sdk/anthropic",
   api: "https://api.openmodel.ai/v1",
-  models: {
-    "deepseek-v4-flash": {
-      id: "deepseek-v4-flash",
-      name: "DeepSeek V4 Flash",
-      family: "deepseek-v4",
-      release_date: "",
-      attachment: true,
-      reasoning: false,
-      temperature: true,
-      tool_call: true,
-      limit: { context: 65536, output: 8192 },
-      cost: { input: 0.035, output: 0.07 },
-      modalities: { input: ["text"], output: ["text"] },
-      status: "active",
-      provider: { npm: "@ai-sdk/anthropic", api: "https://api.openmodel.ai/v1" },
-    },
-  },
+  models: Object.fromEntries(
+    OPENMODEL_DEFS.map((d) => [
+      d.id,
+      {
+        id: d.id,
+        name: d.name,
+        family: d.family,
+        release_date: "",
+        attachment: true,
+        reasoning: (d as any).reasoning ?? false,
+        temperature: true,
+        tool_call: true,
+        limit: { context: d.context, output: d.maxOutput },
+        cost: { input: d.inputCost, output: d.outputCost },
+        modalities: { input: ["text"], output: ["text"] },
+        status: "active",
+        provider: { npm: "@ai-sdk/anthropic", api: "https://api.openmodel.ai/v1" },
+      },
+    ])
+  ),
 }
 
 

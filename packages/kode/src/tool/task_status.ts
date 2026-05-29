@@ -111,9 +111,6 @@ export const TaskStatusTool = Tool.define(
       params: Schema.Schema.Type<typeof Parameters>,
       _ctx: Tool.Context,
     ) {
-      if (!flags.experimentalBackgroundSubagents) {
-        return yield* Effect.fail(new Error("task_status requires KODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS=true"))
-      }
 
       const session = yield* sessions.get(params.task_id).pipe(Effect.catchCause(() => Effect.succeed(undefined)))
       if (!session) {

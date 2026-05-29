@@ -29,7 +29,7 @@ import {
   Todo,
   QuestionAnswer,
   QuestionInfo,
-} from "@Kode-ai/sdk/v2"
+} from "@kode/sdk/v2"
 import { useData } from "../context"
 import { useFileComponent } from "../context/file"
 import { useDialog } from "../context/dialog"
@@ -45,8 +45,8 @@ import { Checkbox } from "./checkbox"
 import { DiffChanges } from "./diff-changes"
 import { Markdown } from "./markdown"
 import { ImagePreview } from "./image-preview"
-import { getDirectory as _getDirectory, getFilename } from "@Kode-ai/core/util/path"
-import { checksum } from "@Kode-ai/core/util/encode"
+import { getDirectory as _getDirectory, getFilename } from "@kode/core/util/path"
+import { checksum } from "@kode/core/util/encode"
 import { Tooltip } from "./tooltip"
 import { IconButton } from "./icon-button"
 import { Spinner } from "./spinner"
@@ -932,7 +932,7 @@ export function AssistantMessageDisplay(props: {
 
 export function ContextToolGroup(props: { parts: ToolPart[]; busy?: boolean }) {
   const i18n = useI18n()
-  const [open, setOpen] = createSignal(false)
+  const [open, setOpen] = createSignal(true) // ANTIGRAVITY TRANSPARENCY: Default OPEN
   const pending = createMemo(
     () =>
       !!props.busy || props.parts.some((part) => part.state.status === "pending" || part.state.status === "running"),
@@ -1522,12 +1522,32 @@ PART_MAPPING["text"] = function TextPartDisplay(props) {
     }
   }
 
+  const ephemeralContent = createMemo(() => {
+    const content = text()
+    if (!content) return null
+    const match = content.match(/<EPHEMERAL_MESSAGE>([\s\S]*?)<\/EPHEMERAL_MESSAGE>/)
+    if (match) return match[1].trim()
+    return null
+  })
+
   return (
     <Show when={text()}>
       <div data-component="text-part" data-timeline-part-id={part().id}>
         <div data-slot="text-part-body">
-          <Show when={streaming()} fallback={<Markdown text={text()} cacheKey={part().id} streaming={false} />}>
-            <PacedMarkdown text={text()} cacheKey={part().id} streaming={streaming()} />
+          <Show when={ephemeralContent()} fallback={
+            <Show when={streaming()} fallback={<Markdown text={text()} cacheKey={part().id} streaming={false} />}>
+              <PacedMarkdown text={text()} cacheKey={part().id} streaming={streaming()} />
+            </Show>
+          }>
+            <div
+              style="padding: 12px 16px; border: 1px solid rgba(0, 255, 65, 0.3); border-radius: 8px; background: rgba(0, 255, 65, 0.05); box-shadow: 0 0 10px rgba(0, 255, 65, 0.05);"
+            >
+              <div style="font-size: 11px; text-transform: uppercase; font-weight: 600; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; letter-spacing: 0.05em; color: #00ff41;">
+                <Icon name="bell" size="small" />
+                SYSTEM NOTIFICATION (EPHEMERAL)
+              </div>
+              <Markdown text={ephemeralContent()!} cacheKey={part().id + '-ephemeral'} streaming={false} />
+            </div>
           </Show>
         </div>
         <Show when={showCopy()}>
@@ -1568,7 +1588,10 @@ PART_MAPPING["reasoning"] = function ReasoningPartDisplay(props) {
 
   return (
     <Show when={text()}>
-      <div data-component="reasoning-part" data-timeline-part-id={part().id}>
+      <div data-component="reasoning-part" data-timeline-part-id={part().id} style="border-left: 2px solid var(--border-interactive-base); padding-left: 12px; margin-bottom: 8px;">
+        <div style="font-family: var(--font-family-mono); font-size: 11px; color: var(--text-interactive-base); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.1em;">
+          [ Kode Agent : Neural Stream ]
+        </div>
         <Show when={streaming()} fallback={<Markdown text={text()} cacheKey={part().id} streaming={false} />}>
           <PacedMarkdown text={text()} cacheKey={part().id} streaming={streaming()} />
         </Show>

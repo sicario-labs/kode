@@ -3,13 +3,13 @@ import {
   type SnapshotFileDiff,
   Message as MessageType,
   Part as PartType,
-} from "@Kode-ai/sdk/v2/client"
-import type { SessionStatus } from "@Kode-ai/sdk/v2"
+} from "@kode/sdk/v2/client"
+import type { SessionStatus } from "@kode/sdk/v2"
 import { useData } from "../context"
 import { useFileComponent } from "../context/file"
 
-import { Binary } from "@Kode-ai/core/util/binary"
-import { getDirectory, getFilename } from "@Kode-ai/core/util/path"
+import { Binary } from "@kode/core/util/binary"
+import { getDirectory, getFilename } from "@kode/core/util/path"
 import { createEffect, createMemo, createSignal, For, on, ParentProps, Show } from "solid-js"
 import { createStore } from "solid-js/store"
 import { Dynamic } from "solid-js/web"

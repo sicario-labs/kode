@@ -2,7 +2,7 @@ import { useMarked } from "../context/marked"
 import { useI18n } from "../context/i18n"
 import DOMPurify from "dompurify"
 import morphdom from "morphdom"
-import { checksum } from "@Kode-ai/core/util/encode"
+import { checksum } from "@kode/core/util/encode"
 import { ComponentProps, createEffect, createResource, createSignal, onCleanup, splitProps } from "solid-js"
 import { isServer } from "solid-js/web"
 import { stream } from "./markdown-stream"
@@ -227,6 +227,49 @@ function setupCodeCopy(root: HTMLDivElement, getLabels: () => CopyLabels) {
   }
 }
 
+function setupCarousel(root: HTMLDivElement) {
+  const handleClick = (event: MouseEvent) => {
+    const target = event.target
+    if (!(target instanceof Element)) return
+
+    const button = target.closest('button[data-action]')
+    if (!(button instanceof HTMLButtonElement)) return
+
+    const container = button.closest('[data-component="markdown-carousel"]')
+    if (!(container instanceof HTMLElement)) return
+
+    const action = button.getAttribute('data-action')
+    if (action !== 'prev' && action !== 'next') return
+
+    const total = parseInt(container.getAttribute('data-total') || '0', 10)
+    let current = parseInt(container.getAttribute('data-current') || '0', 10)
+
+    if (action === 'prev' && current > 0) current--
+    else if (action === 'next' && current < total - 1) current++
+
+    container.setAttribute('data-current', current.toString())
+
+    const slides = container.querySelectorAll('.carousel-slide')
+    slides.forEach((slide, idx) => {
+      if (slide instanceof HTMLElement) {
+        slide.style.display = idx === current ? 'block' : 'none'
+      }
+    })
+
+    const counter = container.querySelector('.carousel-counter')
+    if (counter) counter.textContent = `${current + 1} / ${total}`
+
+    const prevBtn = container.querySelector('button[data-action="prev"]')
+    if (prevBtn instanceof HTMLButtonElement) prevBtn.disabled = current === 0
+
+    const nextBtn = container.querySelector('button[data-action="next"]')
+    if (nextBtn instanceof HTMLButtonElement) nextBtn.disabled = current === total - 1
+  }
+
+  root.addEventListener("click", handleClick)
+  return () => root.removeEventListener("click", handleClick)
+}
+
 function touch(key: string, value: Entry) {
   cache.delete(key)
   cache.set(key, value)
@@ -288,6 +331,7 @@ export function Markdown(
   )
 
   let copyCleanup: (() => void) | undefined
+  let carouselCleanup: (() => void) | undefined
 
   createEffect(() => {
     const container = root()
@@ -330,10 +374,13 @@ export function Markdown(
         copy: i18n.t("ui.message.copy"),
         copied: i18n.t("ui.message.copied"),
       }))
+
+    if (!carouselCleanup) carouselCleanup = setupCarousel(container)
   })
 
   onCleanup(() => {
     if (copyCleanup) copyCleanup()
+    if (carouselCleanup) carouselCleanup()
   })
 
   return (

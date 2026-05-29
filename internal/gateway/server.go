@@ -3,13 +3,42 @@ package gateway
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"time"
 )
+
+// Shared HTTP clients — reuse TCP connections and TLS sessions across requests.
+// This avoids the ~100-300ms overhead of a fresh TCP+TLS handshake on every call.
+var sharedTransport = &http.Transport{
+	MaxIdleConns:        100,
+	MaxIdleConnsPerHost: 20,
+	IdleConnTimeout:     90 * time.Second,
+	TLSHandshakeTimeout: 10 * time.Second,
+	ForceAttemptHTTP2:   true,
+	DialContext: (&net.Dialer{
+		Timeout:   10 * time.Second,
+		KeepAlive: 30 * time.Second,
+	}).DialContext,
+	TLSClientConfig: &tls.Config{
+		MinVersion: tls.VersionTLS12,
+	},
+}
+
+var proxyClient = &http.Client{
+	Transport: sharedTransport,
+	Timeout:   120 * time.Second,
+}
+
+var streamClient = &http.Client{
+	Transport: sharedTransport,
+	Timeout:   300 * time.Second,
+}
 
 type UpstreamConfig struct {
 	OpenAIKey      string
@@ -39,6 +68,7 @@ type Server struct {
 	rateLimiter *RateLimiter
 	mux         *http.ServeMux
 	monitor     *UsageMonitor
+	modelIndex  map[string]Model // O(1) model lookups, built once at startup
 }
 
 func NewServer(catalog Catalog, upstream UpstreamConfig) *Server {
@@ -50,6 +80,12 @@ func NewServer(catalog Catalog, upstream UpstreamConfig) *Server {
 		rateLimiter:  NewRateLimiter(10000, 24*time.Hour),
 		mux:          http.NewServeMux(),
 		monitor:      NewUsageMonitor(1000),
+		modelIndex:   make(map[string]Model, len(catalog.Models)),
+	}
+
+	// Build model index for O(1) lookups (replaces 3x linear scans per request)
+	for _, m := range catalog.Models {
+		s.modelIndex[m.ID] = m
 	}
 
 	s.mux.HandleFunc("GET /api/models", s.handleModels)
@@ -76,7 +112,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	lrw := &loggingResponseWriter{ResponseWriter: w, statusCode: http.StatusOK}
 	s.mux.ServeHTTP(lrw, r)
 
-	// Structured JSON logging
+	// Async structured JSON logging — off the request critical path
 	entry := logEntry{
 		Timestamp: start.Format(time.RFC3339),
 		Method:    r.Method,
@@ -85,8 +121,10 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Duration:  fmt.Sprintf("%.0f", float64(time.Since(start).Milliseconds())),
 		IP:        ip,
 	}
-	out, _ := json.Marshal(entry)
-	fmt.Fprintln(os.Stderr, string(out))
+	go func() {
+		out, _ := json.Marshal(entry)
+		fmt.Fprintln(os.Stderr, string(out))
+	}()
 }
 
 type loggingResponseWriter struct {
@@ -198,14 +236,8 @@ func (s *Server) handleChat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Find model to check tier
-	var model Model
-	for _, m := range s.catalog.Models {
-		if m.ID == req.Model {
-			model = m
-			break
-		}
-	}
+	// O(1) model lookup
+	model, _ := s.modelIndex[req.Model]
 
 	tier, _ := ResolveTier(apiKey, s.keyStore)
 	s.monitor.Record(ip, req.Model, tier, 0, 0)
@@ -232,15 +264,7 @@ func (s *Server) handleChat(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) resolveUpstream(modelID string) (string, string, error) {
-	var model Model
-	found := false
-	for _, m := range s.catalog.Models {
-		if m.ID == modelID {
-			model = m
-			found = true
-			break
-		}
-	}
+	model, found := s.modelIndex[modelID]
 	if !found {
 		return "", "", fmt.Errorf("unknown model: %s", modelID)
 	}
@@ -276,8 +300,7 @@ func (s *Server) proxyChat(w http.ResponseWriter, r *http.Request, upstreamURL, 
 	proxyReq.Header.Set("Content-Type", "application/json")
 	proxyReq.Header.Set("Authorization", "Bearer "+upstreamKey)
 
-	client := &http.Client{Timeout: 120 * time.Second}
-	resp, err := client.Do(proxyReq)
+	resp, err := proxyClient.Do(proxyReq)
 	if err != nil {
 		http.Error(w, fmt.Sprintf(`{"error":"upstream error: %v"}`, err), http.StatusBadGateway)
 		return
@@ -317,8 +340,7 @@ func (s *Server) proxyStream(w http.ResponseWriter, r *http.Request, upstreamURL
 	proxyReq.Header.Set("Content-Type", "application/json")
 	proxyReq.Header.Set("Authorization", "Bearer "+upstreamKey)
 
-	client := &http.Client{Timeout: 300 * time.Second}
-	resp, err := client.Do(proxyReq)
+	resp, err := streamClient.Do(proxyReq)
 	if err != nil {
 		http.Error(w, fmt.Sprintf(`{"error":"upstream error: %v"}`, err), http.StatusBadGateway)
 		return

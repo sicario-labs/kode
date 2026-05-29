@@ -445,6 +445,8 @@ async function highlightCodeBlocks(html: string): Promise<string> {
       .replace(/&#39;/g, "'")
 
     let language = lang || "text"
+    if (language === "carousel") continue;
+
     if (!(language in bundledLanguages)) {
       language = "text"
     }
@@ -469,20 +471,13 @@ export const { use: useMarked, provider: MarkedProvider } = createSimpleContext(
   name: "Marked",
   init: (props: { nativeParser?: NativeMarkdownParser }) => {
     const jsParser = marked.use(
-      {
-        renderer: {
-          link({ href, title, text }) {
-            const titleAttr = title ? ` title="${title}"` : ""
-            return `<a href="${href}"${titleAttr} class="external-link" target="_blank" rel="noopener noreferrer">${text}</a>`
-          },
-        },
-      },
       markedKatex({
         throwOnError: false,
         nonStandard: true,
       }),
       markedShiki({
         async highlight(code, lang) {
+          if (lang === "carousel") return code; // Skip highlighting for carousels
           const highlighter = await getSharedHighlighter({
             themes: ["Kode"],
             langs: [],
@@ -501,6 +496,42 @@ export const { use: useMarked, provider: MarkedProvider } = createSimpleContext(
           })
         },
       }),
+      {
+        renderer: {
+          link({ href, title, text }) {
+            const titleAttr = title ? ` title="${title}"` : ""
+            return `<a href="${href}"${titleAttr} class="external-link" target="_blank" rel="noopener noreferrer">${text}</a>`
+          },
+          code(token) {
+            if (token.lang === "carousel") {
+              const slides = token.text.split("<!-- slide -->").map((s: string) => s.trim());
+              const htmlSlides = slides.map((slide: string) => this.parser.parse(this.lexer.lex(slide)));
+              const slidesHtml = htmlSlides.map((html: string, i: number) => `
+                <div class="carousel-slide" data-index="${i}" style="display: ${i === 0 ? 'block' : 'none'};">
+                  ${html}
+                </div>
+              `).join('');
+              
+              return `
+                <div class="carousel-container" data-component="markdown-carousel" data-total="${slides.length}" data-current="0" style="border: 1px solid var(--border-interactive-base); border-radius: 8px; overflow: hidden; margin: 16px 0;">
+                  <div class="carousel-header" style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--border-weak-base); background: var(--surface-raised-stronger);">
+                    <span style="font-size: 12px; font-weight: 600; color: var(--text-weak); text-transform: uppercase;">Carousel (${slides.length} slides)</span>
+                    <div class="carousel-controls" style="display: flex; gap: 8px; align-items: center;">
+                      <button type="button" data-action="prev" disabled style="background: var(--surface-base); border: 1px solid var(--border-weak-base); cursor: pointer; padding: 4px 8px; border-radius: 4px; color: var(--text-strong);">←</button>
+                      <span class="carousel-counter" style="font-size: 12px; color: var(--text-strong); padding: 0 4px; min-width: 32px; text-align: center;">1 / ${slides.length}</span>
+                      <button type="button" data-action="next" ${slides.length <= 1 ? 'disabled' : ''} style="background: var(--surface-base); border: 1px solid var(--border-weak-base); cursor: pointer; padding: 4px 8px; border-radius: 4px; color: var(--text-strong);">→</button>
+                    </div>
+                  </div>
+                  <div class="carousel-content" style="padding: 16px; background: var(--surface-raised-base);">
+                    ${slidesHtml}
+                  </div>
+                </div>
+              `;
+            }
+            return false; // delegate to markedShiki for everything else
+          }
+        },
+      }
     )
 
     if (props.nativeParser) {

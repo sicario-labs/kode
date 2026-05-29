@@ -51,11 +51,13 @@ export class VerificationGatekeeper {
   private binaryPath: string
   private askHandler: AskHandler
   private progressHandler: ProgressCallback | null
+  private env?: Record<string, string | undefined>
 
-  constructor(binaryPath?: string, askHandler?: AskHandler) {
+  constructor(binaryPath?: string, askHandler?: AskHandler, env?: Record<string, string | undefined>) {
     this.binaryPath = binaryPath ?? resolveKodeBinary()
     this.askHandler = askHandler ?? globalAskHandler ?? defaultAskHandler
     this.progressHandler = null
+    this.env = env
   }
 
   onProgress(cb: ProgressCallback): void {
@@ -74,9 +76,11 @@ export class VerificationGatekeeper {
 
     try {
       const stdout = await new Promise<string>((resolvePromise, reject) => {
+        const spawnEnv = this.env ? { ...process.env, ...this.env } : process.env
         const proc = spawn(this.binaryPath, ["verify", "--input", tmpFile, "--project-dir", process.cwd()], {
           timeout: 30000,
           stdio: ["ignore", "pipe", "pipe"],
+          env: spawnEnv,
         })
 
         let stdoutBuf = ""

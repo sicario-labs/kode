@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/kode/kode/internal/gateway"
 )
@@ -30,8 +31,16 @@ func main() {
 	log.Printf("  Models: %d in catalog", len(gateway.DefaultCatalog.Models))
 	log.Printf("  Lite pool: %d keys (round-robin)", len(gateway.KeysFromEnv("KODE_LITE_KEYS")))
 	log.Printf("  Rate limit: 20 req/day per IP (Lite tier)")
+	log.Printf("  Connection pooling: enabled (shared HTTP transport)")
 
-	if err := http.ListenAndServe(addr, srv); err != nil {
+	httpServer := &http.Server{
+		Addr:              addr,
+		Handler:           srv,
+		ReadHeaderTimeout: 10 * time.Second,
+		IdleTimeout:       120 * time.Second,
+		MaxHeaderBytes:    1 << 20, // 1 MB
+	}
+	if err := httpServer.ListenAndServe(); err != nil {
 		log.Fatal(err)
 	}
 }

@@ -80,8 +80,8 @@ function scheduleFrameMount(fn: () => void) {
 
 export function BasicTool(props: BasicToolProps) {
   const [state, setState] = createStore({
-    open: props.defaultOpen ?? false,
-    ready: !props.defer && (props.defaultOpen ?? false),
+    open: props.defaultOpen ?? true, // ANTIGRAVITY TRANSPARENCY: Default OPEN
+    ready: !props.defer && (props.defaultOpen ?? true),
   })
   const open = () => state.open
   const ready = () => state.ready

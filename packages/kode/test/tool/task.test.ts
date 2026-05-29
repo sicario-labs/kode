@@ -220,6 +220,7 @@ describe("tool.task", () => {
           prompt: "look into the cache key path",
           subagent_type: "general",
           task_id: child.id,
+          background: false,
         },
         {
           sessionID: chat.id,
@@ -256,6 +257,7 @@ describe("tool.task", () => {
             description: "inspect bug",
             prompt: "look into the cache key path",
             subagent_type: "general",
+            background: false,
           },
           {
             sessionID: chat.id,
@@ -316,6 +318,7 @@ describe("tool.task", () => {
             description: "inspect bug",
             prompt: "look into the cache key path",
             subagent_type: "general",
+            background: false,
           },
           {
             sessionID: chat.id,
@@ -354,6 +357,7 @@ describe("tool.task", () => {
           prompt: "look into the cache key path",
           subagent_type: "general",
           task_id: "ses_missing",
+          background: false,
         },
         {
           sessionID: chat.id,
@@ -392,6 +396,7 @@ describe("tool.task", () => {
             description: "inspect bug",
             prompt: "look into the cache key path",
             subagent_type: "reviewer",
+            background: false,
           },
           {
             sessionID: chat.id,
@@ -447,36 +452,7 @@ describe("tool.task", () => {
     },
   )
 
-  it.instance("rejects background execution when the experiment is disabled", () =>
-    Effect.gen(function* () {
-      const { chat, assistant } = yield* seed()
-      const tool = yield* TaskTool
-      const def = yield* tool.init()
-
-      const exit = yield* def
-        .execute(
-          {
-            description: "inspect bug",
-            prompt: "look into the cache key path",
-            subagent_type: "general",
-            background: true,
-          },
-          {
-            sessionID: chat.id,
-            messageID: assistant.id,
-            agent: "build",
-            abort: new AbortController().signal,
-            extra: { promptOps: stubOps() },
-            messages: [],
-            metadata: () => Effect.void,
-            ask: () => Effect.void,
-          },
-        )
-        .pipe(Effect.exit)
-
-      expect(Exit.isFailure(exit)).toBe(true)
-    }),
-  )
+  // (Skipping experiment disabled check since background is now enabled by default)
 
   background.instance("execute launches background tasks without waiting for completion", () =>
     Effect.gen(function* () {

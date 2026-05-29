@@ -1,6 +1,6 @@
 import { Schema } from "effect"
 import * as path from "path"
-import { Effect } from "effect"
+import { Effect, Option } from "effect"
 import * as Tool from "./tool"
 import { LSP } from "@/lsp/lsp"
 import { createTwoFilesPatch } from "diff"
@@ -74,10 +74,10 @@ export const WriteTool = Tool.define(
           })
 
           // Kode Gatekeeper: verify proposed content before declaring success
-          const config = yield* ConfigService.pipe(
-            Effect.flatMap((svc) => svc.get()),
-            Effect.catchAll(() => Effect.succeed(undefined)),
-          )
+          const configSvc = yield* Effect.serviceOption(ConfigService)
+          const config = Option.isSome(configSvc)
+            ? yield* configSvc.value.get().pipe(Effect.catch(() => Effect.succeed(undefined)))
+            : undefined
           const verification = yield* verifySingleFile(filepath, contentNew, config ?? undefined)
           if (!verification.approved) {
             const output = `Kode Gate blocked this write:\n\n${verification.failureDetails}\n\nPlease fix the issues and try again.`

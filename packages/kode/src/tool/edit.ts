@@ -4,7 +4,7 @@
 // https://github.com/cline/cline/blob/main/evals/diff-edits/diff-apply/diff-06-26-25.ts
 
 import * as path from "path"
-import { Effect, Schema, Semaphore } from "effect"
+import { Effect, Schema, Semaphore, Option } from "effect"
 import * as Tool from "./tool"
 import { LSP } from "@/lsp/lsp"
 import { createTwoFilesPatch, diffLines } from "diff"
@@ -194,10 +194,10 @@ export const EditTool = Tool.define(
           let output = "Edit applied successfully."
 
           // Kode Gatekeeper: verify the edited file before declaring success
-          const config = yield* ConfigService.pipe(
-            Effect.flatMap((svc) => svc.get()),
-            Effect.catchAll(() => Effect.succeed(undefined)),
-          )
+          const configSvc = yield* Effect.serviceOption(ConfigService)
+          const config = Option.isSome(configSvc)
+            ? yield* configSvc.value.get().pipe(Effect.catch(() => Effect.succeed(undefined)))
+            : undefined
           const verification = yield* verifySingleFile(filePath, contentNew, config ?? undefined)
           if (!verification.approved) {
             output = `Kode Gate blocked this edit:\n\n${verification.failureDetails}\n\nPlease fix the issues and try again.`

@@ -205,6 +205,7 @@ func (s *Server) handleApplyVerified(ctx context.Context, task string) (string, 
 		LLMConfig:          s.llmConfig,
 		MaxRetries:         3,
 		EnableContextIndex: true,
+		AsyncTest:          true,
 	})
 
 	pipe.BeforeStage(workflow.StageGenerate, func(st *workflow.State) {

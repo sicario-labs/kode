@@ -110,11 +110,17 @@ func proxyEntry(entry string, args []string) error {
 		}
 	}
 
+	entryDir := tuiDir
+	if strings.HasPrefix(entry, "./packages/kode/") {
+		entryDir = filepath.Join(tuiDir, "packages", "kode")
+		entry = strings.TrimPrefix(entry, "./packages/kode/")
+	}
+
 	selfPath, _ := os.Executable()
 	bunArgs := append([]string{"run", "--conditions=browser", entry}, args...)
 
 	tsCmd := exec.Command(bunPath, bunArgs...)
-	tsCmd.Dir = tuiDir
+	tsCmd.Dir = entryDir
 	tsCmd.Stdin = os.Stdin
 	tsCmd.Stdout = os.Stdout
 	tsCmd.Stderr = os.Stderr

@@ -13,23 +13,25 @@ import (
 )
 
 type Executor struct {
-	syntax       *verify.SyntaxChecker
-	imports      *verify.ImportValidator
-	calls        *verify.CallChecker
-	architecture *verify.ArchitectureChecker
-	parser       *HunkParser
-	correction   *SelfCorrectionEngine
+	syntax         *verify.SyntaxChecker
+	imports        *verify.ImportValidator
+	calls          *verify.CallChecker
+	architecture   *verify.ArchitectureChecker
+	parser         *HunkParser
+	correction     *SelfCorrectionEngine
+	staticAnalysis *verify.StaticAnalysisChecker
 }
 
 func NewExecutor(projectRoot string) *Executor {
 	moduleName := readModuleName(projectRoot)
 	return &Executor{
-		syntax:       verify.NewSyntaxChecker(),
-		imports:      verify.NewImportValidator(projectRoot),
-		calls:        verify.NewCallChecker(projectRoot),
-		architecture: verify.NewArchitectureCheckerWithModule(projectRoot, moduleName),
-		parser:       NewHunkParser(),
-		correction:   NewSelfCorrectionEngine(),
+		syntax:         verify.NewSyntaxChecker(),
+		imports:        verify.NewImportValidator(projectRoot),
+		calls:          verify.NewCallChecker(projectRoot),
+		architecture:   verify.NewArchitectureCheckerWithModule(projectRoot, moduleName),
+		parser:         NewHunkParser(),
+		correction:     NewSelfCorrectionEngine(),
+		staticAnalysis: verify.NewStaticAnalysisChecker(projectRoot),
 	}
 }
 
@@ -167,6 +169,32 @@ func (e *Executor) ExecuteTransaction(ctx context.Context, taskID string, projec
 	if summary.Status == StatusPass {
 		if err := e.commitToDisk(projectRoot, allPassingHunks, reqCtx.OriginalFiles, cumulativeState); err != nil {
 			return summary, fmt.Errorf("disk commit failed: %w", err)
+		}
+
+		// Run Tier 2: Static Analysis (Type check / compilation check) on the committed files
+		fmt.Fprintf(os.Stderr, "KODE_GATE: static_analysis\n")
+		var changedFiles []string
+		seen := make(map[string]bool)
+		for _, hunk := range allPassingHunks {
+			if !seen[hunk.FilePath] {
+				seen[hunk.FilePath] = true
+				changedFiles = append(changedFiles, hunk.FilePath)
+			}
+		}
+
+		analysisRes := e.staticAnalysis.Check(ctx, changedFiles)
+		if analysisRes.Status == verify.StatusFail {
+			// Roll back the disk writes to restore the original files
+			rollbackState := make(map[string]string)
+			for filePath, originalContent := range reqCtx.OriginalFiles {
+				rollbackState[filePath] = originalContent
+			}
+			// Write original contents back
+			_ = e.commitToDisk(projectRoot, allPassingHunks, nil, rollbackState)
+
+			summary.Status = StatusFail
+			summary.FailedHunks["static_analysis"] = analysisRes.Message + ": " + analysisRes.Details
+			return summary, fmt.Errorf("static analysis check failed (rolled back): %s (%s)", analysisRes.Message, analysisRes.Details)
 		}
 	}
 

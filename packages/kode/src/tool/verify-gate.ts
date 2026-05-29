@@ -2,7 +2,7 @@
 // and provides a consistent interface for edit.ts, write.ts, and apply_patch.ts.
 
 import * as path from "path"
-import { Effect } from "effect"
+import { Effect, Option } from "effect"
 import { VerificationGatekeeper, type VerifyResult, type ProgressCallback } from "../bridge/gatekeeper"
 import type { Info } from "../config/config"
 
@@ -57,11 +57,13 @@ function extractVerifyConfig(config?: Info): VerifyConfig {
  * and returns a structured outcome. If verification is disabled or
  * no code files are present, returns a "skipped" outcome.
  */
+import { Auth } from "../auth"
+
 export function verifyFiles(
   files: VerifyFile[],
   config?: Info,
   onProgress?: ProgressCallback,
-): Effect.Effect<VerifyOutcome> {
+): Effect.Effect<VerifyOutcome, never, never> {
   return Effect.gen(function* () {
     const vc = extractVerifyConfig(config)
 
@@ -76,7 +78,15 @@ export function verifyFiles(
       return { approved: true, skipped: true, badge: "" }
     }
 
-    const gatekeeper = new VerificationGatekeeper()
+    const authSvcOption = yield* Effect.serviceOption(Auth.Service)
+    const auths = Option.isSome(authSvcOption)
+      ? yield* authSvcOption.value.all().pipe(Effect.catch(() => Effect.succeed({})))
+      : ({} as any)
+    const spawnEnv: Record<string, string> = {}
+    if (auths["openai"]?.type === "api") spawnEnv["OPENAI_API_KEY"] = auths["openai"].key
+    if (auths["anthropic"]?.type === "api") spawnEnv["ANTHROPIC_API_KEY"] = auths["anthropic"].key
+    
+    const gatekeeper = new VerificationGatekeeper(undefined, undefined, spawnEnv)
     if (onProgress) {
       gatekeeper.onProgress(onProgress)
     }
@@ -88,7 +98,7 @@ export function verifyFiles(
         vc.block_architecture ?? false,
       ),
     ).pipe(
-      Effect.catchAll((error) =>
+      Effect.catch((error) =>
         Effect.succeed({
           approved: true,
           result: {
@@ -145,6 +155,6 @@ export function verifySingleFile(
   content: string,
   config?: Info,
   onProgress?: ProgressCallback,
-): Effect.Effect<VerifyOutcome> {
+): Effect.Effect<VerifyOutcome, never, never> {
   return verifyFiles([{ path: filePath, content }], config, onProgress)
 }
