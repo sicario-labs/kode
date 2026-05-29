@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -105,7 +106,7 @@ func NewServer(catalog Catalog, upstream UpstreamConfig) *Server {
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
-	ip := FormatIP(r.RemoteAddr)
+	ip := getClientIP(r)
 	ctx := context.WithValue(r.Context(), "remote_ip", ip)
 	r = r.WithContext(ctx)
 
@@ -211,7 +212,7 @@ func (s *Server) handleChat(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Free tier: rate limit by IP
-	ip := FormatIP(r.RemoteAddr)
+	ip := getClientIP(r)
 	if apiKey == "" || apiKey == "public" {
 		if s.rateLimiter.Blocked(ip) {
 			w.Header().Set("Content-Type", "application/json")
@@ -364,4 +365,20 @@ func (s *Server) proxyStream(w http.ResponseWriter, r *http.Request, upstreamURL
 			break
 		}
 	}
+}
+
+func getClientIP(r *http.Request) string {
+	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+		ips := strings.Split(xff, ",")
+		if len(ips) > 0 {
+			ip := strings.TrimSpace(ips[0])
+			if ip != "" {
+				return ip
+			}
+		}
+	}
+	if xrip := r.Header.Get("X-Real-IP"); xrip != "" {
+		return strings.TrimSpace(xrip)
+	}
+	return FormatIP(r.RemoteAddr)
 }
