@@ -19,3 +19,23 @@
   for = "/index.html"
   [headers.values]
     Cache-Control = "public, max-age=0, must-revalidate"
+
+# Redirect main site /docs to subdomain
+[[redirects]]
+  from = "/docs"
+  to = "https://docs.trykode.xyz"
+  status = 301
+  force = true
+
+# Rewrite subdomain requests to the docs route
+[[redirects]]
+  from = "https://docs.trykode.xyz/*"
+  to = "/docs/:splat"
+  status = 200
+  force = true
+
+# Fallback for SPA routing
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

@@ -5,7 +5,7 @@ export default function Footer() {
         <div className="footer-links-grid">
           {[
             { label: 'GitHub', href: 'https://github.com/sicario-labs/kode' },
-            { label: 'Docs', href: '/docs' },
+            { label: 'Docs', href: 'https://docs.trykode.xyz' },
             { label: 'Changelog', href: '/changelog' },
             { label: 'Pricing', href: '/pricing' },
             { label: 'X', href: 'https://x.com/trykode' },
