@@ -1,6 +1,6 @@
 export default function Stats() {
-  const stats = [
-    { value: '6', label: 'Verification gates per file write', sub: 'syntax → imports → calls → blast radius → architecture → security' },
+const stats = [
+    { value: '9', label: 'Verification gates per file write', sub: 'syntax → imports → calls → blast radius → architecture → security → sandbox → qr tunnel → browser' },
     { value: '<50ms', label: 'Gate execution time', sub: 'Compiled Go binary, zero CGo. The user never notices.' },
     { value: '10,839', label: 'Lines of original Go engine code', sub: '18 packages. 90 files. 100% original.' },
     { value: '5', label: 'Languages verified', sub: 'Go, TypeScript, JavaScript, Python, Rust' },

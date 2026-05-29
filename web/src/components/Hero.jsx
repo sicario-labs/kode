@@ -35,11 +35,11 @@ const AnimatedTuiMockup = () => {
       const interval = setInterval(() => {
         step++;
         setGateStep(step);
-        if (step >= 7) {
+        if (step >= 10) {
           clearInterval(interval);
           setTimeout(() => setPhase('done'), 5000);
         }
-      }, 600);
+      }, 400);
       return () => clearInterval(interval);
     } else if (phase === 'done') {
       setPhase('initial');
@@ -76,6 +76,9 @@ const AnimatedTuiMockup = () => {
     { name: 'Blast Radius',  detail: '2 files modified (limit: 10)' },
     { name: 'Architecture',  detail: 'no boundary violations' },
     { name: 'Security',      detail: 'no vulnerabilities injected' },
+    { name: 'Sandbox Replay', detail: 'CPU execution bounds passed' },
+    { name: 'QR Tunnel',     detail: 'local tunnel server booted' },
+    { name: 'Browser E2E',   detail: 'Playwright test suite passed' },
   ];
 
   return (
@@ -116,7 +119,7 @@ const AnimatedTuiMockup = () => {
             <div className="tui-tip-row">
               <span className="tui-tip-tag">&bull; Tip</span>
               <span className="tui-tip-text">
-                Every file write passes through 6 verification gates before it touches your filesystem
+                Every file write passes through 9 verification gates before it touches your filesystem
               </span>
             </div>
           </div>
@@ -149,7 +152,7 @@ const AnimatedTuiMockup = () => {
               )
             ))}
 
-            {gateStep >= 7 && (
+            {gateStep >= 10 && (
               <div style={{ 
                 marginTop: 12, 
                 padding: '8px 12px', 
@@ -168,7 +171,7 @@ const AnimatedTuiMockup = () => {
                <div>
                  <span style={{ color: '#4ade80', marginRight: 12, fontWeight: 700 }}>Build</span>
                  <span style={{ color: '#fff' }}>Claude Sonnet 4</span>
-                 <span style={{ color: '#8e8c9f', marginLeft: 8 }}>6/6 gates passed</span>
+                 <span style={{ color: '#8e8c9f', marginLeft: 8 }}>9/9 gates passed</span>
                </div>
             </div>
           </div>
@@ -204,7 +207,7 @@ export default function Hero() {
               Stop generating.<br />Start verifying.
             </h1>
             <p className="body-md hero-sub">
-              Every other agent trusts the LLM and prays. Kode runs 6 deterministic verification gates &mdash; syntax, imports, calls, blast radius, architecture, security &mdash; before any generated code touches your filesystem.
+              Every other agent trusts the LLM and prays. Kode runs 9 deterministic verification gates &mdash; syntax, imports, calls, blast radius, architecture, security, sandbox replay, QR tunnel, and browser E2E &mdash; before any generated code touches your filesystem.
             </p>
 
             <div className="install-container">

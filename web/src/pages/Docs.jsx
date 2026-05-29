@@ -156,7 +156,7 @@ export default function Docs() {
 
             {/* Section 3: Verification Gates */}
             <div id="gates" className="docs-section">
-              <div className="heading-md" style={{ marginBottom: 16 }}>The 6 Verification Gates</div>
+              <div className="heading-md" style={{ marginBottom: 16 }}>The 9 Verification Gates</div>
               <p className="body-md" style={{ marginBottom: 24 }}>
                 Before any patch is written to disk, it must satisfy all configured gatekeepers:
               </p>
@@ -169,6 +169,9 @@ export default function Docs() {
                   ['4. Blast Radius Gate', 'Analyzes code churn metrics. Walks the reverse dependency graph and blocks patches if the modified files downstream impact exceeds configured limits.'],
                   ['5. Architecture Gate', 'Enforces strict modular boundaries. Checks imports against modular layers in the configuration (e.g. preventing database layers from importing route handlers).'],
                   ['6. Security Gate', 'Scans files using Sicario SAST engine. Parses generated AST structure and flags potential vulnerabilities (e.g. SQL injection, hardcoded secrets, XSS) before writes occur.'],
+                  ['7. Sandbox Replay Gate', 'CPU-bounded execution checks. Traps and terminates infinite loops, memory leaks, and unauthorized system/network sockets.'],
+                  ['8. QR Code Tunnel Gate', 'Boots a secure public dev tunnel for previewing web apps, mapping the URL to a terminal-scannable QR code for instant mobile verification.'],
+                  ['9. Browser Verification Gate', 'Executes headless E2E Playwright tests on dev servers, recording walkthrough videos and validating UI layout or console errors.'],
                 ].map(([gate, desc]) => (
                   <div key={gate} style={{ padding: '16px', background: 'var(--surface-card)', borderRadius: 8, border: '1px solid var(--hairline-strong)' }}>
                     <div style={{ color: 'var(--ink)', fontWeight: 700, fontSize: 16, marginBottom: 8 }}>{gate}</div>
@@ -190,9 +193,10 @@ export default function Docs() {
                   ['kode init', 'Scaffolds configuration files inside the `.kode/` folder.'],
                   ['kode plan [task]', 'Constructs a surgical 8K context graph identifying modified and reference files.'],
                   ['kode generate [prompt]', 'Queries the LLM interface to generate patch alternatives.'],
-                  ['kode verify --input [file]', 'Manually runs all 6 verification checks on the target file.'],
+                  ['kode verify --input [file]', 'Manually runs all 9 verification checks on the target file.'],
                   ['kode run [prompt]', 'Generates, validates, and applies patches in a single pipeline.'],
                   ['kode loop [task]', 'Initiates the full workflow loop: plan, critique, generate, verify, and test.'],
+                  ['kode voice', 'Trigger vocal programming, transcribes via Whisper, and executes Plan-Generate-Verify.'],
                   ['kode explain [check]', 'Displays markdown detail outlining errors and fixes for syntax, imports, calls, etc.'],
                   ['kode daemon --poll [sec]', 'Runs background agent watching repository status and alerting on technical debt decay.'],
                   ['kode mcp serve', 'Exposes Kode verification tools to external editors using Model Context Protocol.'],
