@@ -97,8 +97,8 @@ jobs:
         working-directory: packages/kode
         run: |
           V="${KODE_VERSION#v}" && KODE_VERSION="$V" bun run script/build.ts --single --skip-embed-web-ui --skip-install 2>&1
-          mkdir -p ../../dist
-          cp dist/*/*/bin/kode${{ matrix.ext }} ../../dist/kode-tui-${{ matrix.tui_os }}-${{ matrix.tui_arch }}${{ matrix.ext }}
+          mkdir -p "${{ github.workspace }}/dist"
+          cp dist/*/*/bin/kode${{ matrix.ext }} "${{ github.workspace }}/dist/kode-tui-${{ matrix.tui_os }}-${{ matrix.tui_arch }}${{ matrix.ext }}"
         shell: bash
 
       - name: Setup QEMU for arm64
@@ -160,6 +160,7 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
+          token: ${{ secrets.GITHUB_TOKEN }}
           files: release-assets/*
           generate_release_notes: true
           fail_on_unmatched_files: true
@@ -182,6 +183,7 @@ jobs:
 
       - name: Update version in npm package
         run: |
+          mv ../../package.json ../../package.json.bak || true
           VERSION="${GITHUB_REF_NAME#v}"
           npm version "$VERSION" --no-git-tag-version --allow-same-version
         working-directory: packages/npm
