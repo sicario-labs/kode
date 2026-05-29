@@ -14,19 +14,16 @@ const CodeBlock = ({ children }) => (
 )
 
 export default function Docs() {
-  const [activeSection, setActiveSection] = useState('installation')
+  const [activeSection, setActiveSection] = useState('intro')
 
   const sections = [
-    { id: 'intro', label: 'Intro' },
-    { id: 'installation', label: 'Installation' },
-    { id: 'quickstart', label: 'Quick Start' },
+    { id: 'intro', label: 'Intro & Architecture' },
+    { id: 'installation', label: 'Installation & Setup' },
     { id: 'gates', label: 'Verification Gates' },
-    { id: 'tui', label: 'Interactive TUI' },
-    { id: 'ghost', label: 'Ghost Branches' },
-    { id: 'daemon', label: 'Daemon Mode' },
-    { id: 'mcp', label: 'MCP Server' },
-    { id: 'config', label: 'Configuration' },
     { id: 'commands', label: 'Commands Reference' },
+    { id: 'config', label: 'Configuration Specification' },
+    { id: 'tui', label: 'Interactive TUI' },
+    { id: 'advanced', label: 'Advanced Features' },
   ]
 
   useEffect(() => {
@@ -61,10 +58,10 @@ export default function Docs() {
     <section className="hero-section">
       <div className="wrapper">
         <div className="features-list">
-          <span className="hero-badge" style={{ marginBottom: 24 }}>[x] Documentation</span>
+          <span className="hero-badge" style={{ marginBottom: 24 }}>[x] System Documentation</span>
           <h1 className="display-xl" style={{ marginBottom: 24 }}>Getting started with Kode</h1>
           <p className="body-md hero-sub">
-            Kode is a Go-powered AI coding agent that verifies every generated patch through 5 deterministic gates before touching your filesystem.
+            Kode is a Go-powered AI coding agent that enforces deterministic verification gates on every generated patch before writing to disk.
           </p>
         </div>
 
@@ -84,217 +81,186 @@ export default function Docs() {
 
           {/* CENTER: Content */}
           <div className="docs-content">
+            {/* Section 1: Intro & Architecture */}
             <div id="intro" className="docs-section">
-              <div className="heading-md" style={{ marginBottom: 16 }}>Intro</div>
-              <p className="body-md" style={{ marginBottom: 24 }}>Get started with Kode.</p>
-              <p className="body-md" style={{ marginBottom: 32 }}>Kode is an open source AI coding agent. It is available as a terminal-based interface, desktop app, or IDE extension.</p>
+              <div className="heading-md" style={{ marginBottom: 16 }}>Intro & Architecture</div>
+              <p className="body-md" style={{ marginBottom: 20 }}>
+                Kode is a contrarian AI coding agent designed to replace the fragile "generate-and-pray" loop with a structured, verification-first pipeline:
+              </p>
+              <div style={{ fontWeight: 700, color: 'var(--ink)', marginBottom: 16 }}>
+                Plan → Critique → Generate → Verify → Apply → Test
+              </div>
+              <p className="body-md" style={{ marginBottom: 20 }}>
+                Unlike mainstream tools that write LLM outputs directly to your filesystem, Kode delegates patch generation to models but processes all modifications through a compiled Go orchestrator engine. The orchestrator acts as a strict verification oracle.
+              </p>
               
-              <div style={{ background: '#09080d', borderRadius: 8, overflow: 'hidden', border: '1px solid var(--hairline-strong)', marginBottom: 24, boxShadow: '0 12px 32px rgba(0,0,0,0.1)' }}>
-                <div style={{ background: '#1c1b22', padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#8e8c9f', fontFamily: 'system-ui, sans-serif' }}>
-                  <div style={{ display: 'flex', gap: 6 }}>
-                    <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#ff5f56' }} />
-                    <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#ffbd2e' }} />
-                    <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#27c93f' }} />
-                  </div>
-                  <div style={{ flex: 1, textAlign: 'center', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6 }}>
-                     <span style={{ color: '#8b5cf6' }}>📁</span> Kode | Optimize database query in repo ...
-                  </div>
-                </div>
-                <div style={{ padding: '24px', color: '#e5e7eb', fontFamily: 'var(--font-mono)', fontSize: 13, lineHeight: 1.6 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: 16, marginBottom: 16 }}>
-                     <span style={{ fontWeight: 700 }}># Optimize database query in repo workflow</span>
-                     <span style={{ color: '#8e8c9f' }}>42,150 &nbsp; 15% &nbsp; ($0.12)</span>
-                  </div>
-                  
-                  <div style={{ background: '#13111c', padding: '12px 16px', borderRadius: 4, marginBottom: 16, border: '1px solid rgba(255,255,255,0.03)' }}>
-                    Find the slow query in the user model and optimize it
-                  </div>
-                  
-                  <div style={{ marginBottom: 16 }}>I'll search for the slow query in the database models.</div>
-                  <div style={{ color: '#8e8c9f', marginBottom: 16 }}>
-                    * Grep "SELECT.*FROM users"
-                    <br/>* Grep "User.query"
-                  </div>
-                  
-                  <div style={{ marginBottom: 16 }}>Let me check the schema and indices for the users table:</div>
-                  <div style={{ color: '#8e8c9f', marginBottom: 16 }}>
-                    * Read internal/db/schema.sql
-                    <br/>* Run psql -c "\d users"
-                  </div>
-                  
-                  <div style={{ marginBottom: 16 }}>I found the missing index on the <code>last_login</code> column. Let me apply the fix and verify it through the gates:</div>
-                  
-                  <div style={{ color: '#8e8c9f', marginBottom: 16 }}>
-                    → Read internal/db/models.go
-                    <br/>→ Read internal/db/migrations/005_add_index.sql
-                  </div>
-                  
-                  <div style={{ marginBottom: 16 }}>I found the query. Let me ask if you want to proceed with the index creation:</div>
-                  
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 16 }}>
-                    <span style={{ color: '#8b5cf6' }}>~</span> Asking questions...
-                  </div>
-                  
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 24, fontWeight: 700 }}>
-                    <span style={{ color: '#60a5fa' }}>▣</span> Build &middot; deepseek-4-flash
-                  </div>
-                  
-                  <div style={{ background: '#181622', padding: '16px', borderRadius: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid rgba(255,255,255,0.05)' }}>
-                     <div>
-                       <span style={{ color: '#60a5fa', marginRight: 12 }}>Build</span>
-                       <span>Deepseek 4 Flash</span>
-                       <span style={{ color: '#8e8c9f', marginLeft: 8 }}>Kode Pro</span>
-                     </div>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', color: '#626070', marginTop: 12, fontSize: 12 }}>
-                    <div>........ &nbsp; <span style={{ color: '#c4c3d4' }}>esc</span> interrupt</div>
-                    <div><span style={{ color: '#c4c3d4' }}>ctrl+t</span> variants &nbsp; <span style={{ color: '#c4c3d4' }}>tab</span> agents &nbsp; <span style={{ color: '#c4c3d4' }}>ctrl+p</span> commands</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div id="installation" className="docs-section">
-              <div className="heading-md" style={{ marginBottom: 16 }}>Installation</div>
-              <p className="body-md" style={{ marginBottom: 16 }}>Install Kode with one command:</p>
-              <CodeBlock>
-                <span className="prompt-sym">$</span>
-                <code>curl -fsSL https://trykode.xyz/install | bash</code>
-              </CodeBlock>
-              <p className="body-md" style={{ marginBottom: 16 }}>Or install via Go:</p>
-              <CodeBlock>
-                <span className="prompt-sym">$</span>
-                <code>go install github.com/sicario-labs/kode/cmd/kode@latest</code>
-              </CodeBlock>
-            </div>
-
-            <div id="quickstart" className="docs-section">
-              <div className="heading-md" style={{ marginBottom: 16 }}>Quick start</div>
-              <p className="body-md" style={{ marginBottom: 16 }}>Initialize Kode in your project:</p>
-              <CodeBlock>
-                <span className="prompt-sym">$</span>
-                <code>cd my-project &amp;&amp; kode init</code>
-              </CodeBlock>
-              <p className="body-md" style={{ marginBottom: 16 }}>Run a full loop:</p>
-              <CodeBlock>
-                <span className="prompt-sym">$</span>
-                <code>kode loop &quot;add user authentication to the API&quot;</code>
-              </CodeBlock>
-            </div>
-
-            <div id="gates" className="docs-section">
-              <div className="heading-md" style={{ marginBottom: 16 }}>Verification gates</div>
+              <h3 style={{ fontSize: 18, fontWeight: 700, color: 'var(--ink)', marginBottom: 12, marginTop: 24 }}>The Hybrid Architecture</h3>
               <p className="body-md" style={{ marginBottom: 24 }}>
-                Every generated patch passes through 5 gates before it reaches disk:
+                Kode splits responsibilities between Go and TypeScript for optimal performance and integration:
               </p>
-              {[
-                ['Syntax', 'Validates that the generated code compiles without syntax errors.'],
-                ['Imports', 'Checks all imports resolve correctly and no unused imports exist.'],
-                ['Calls', 'Verifies function signatures match across call sites.'],
-                ['Blast Radius', 'Limits how many files can be modified per cycle. Walks the reverse dependency graph.'],
-                ['Architecture + TDD', 'Enforces test-first workflow. Blocks prod writes without corresponding test files.'],
-              ].map(([gate, desc]) => (
-                <div key={gate} style={{ display: 'flex', gap: 16, padding: '12px 0', borderBottom: '1px solid var(--hairline)' }}>
-                  <span style={{ color: 'var(--ink)', fontWeight: 700, minWidth: 140 }}>[{gate}]</span>
-                  <span style={{ color: 'var(--body)' }}>{desc}</span>
-                </div>
-              ))}
+              <ul style={{ paddingLeft: 20, color: 'var(--body)', lineHeight: 1.7, marginBottom: 32 }}>
+                <li style={{ marginBottom: 12 }}>
+                  <strong>Go Engine (Orchestrator):</strong> The `kode` binary, built in Go, manages fast AST parsing, syntax validation, blast radius computation, and security checks in under 50ms.
+                </li>
+                <li style={{ marginBottom: 12 }}>
+                  <strong>TypeScript TUI Bridge:</strong> Rebranded from upstream `opencode`, the TUI is compiled with Bun/Vite. It spawns the Go engine as a subprocess to verify file content before committing patches.
+                </li>
+              </ul>
             </div>
 
-            <div id="tui" className="docs-section">
-              <div className="heading-md" style={{ marginBottom: 16 }}>Interactive TUI</div>
-              <p className="body-md" style={{ marginBottom: 16 }}>Launch the interactive terminal UI:</p>
+            {/* Section 2: Installation & Setup */}
+            <div id="installation" className="docs-section">
+              <div className="heading-md" style={{ marginBottom: 16 }}>Installation & Setup</div>
+              
+              <h3 style={{ fontSize: 18, fontWeight: 700, color: 'var(--ink)', marginBottom: 12 }}>1. Building the Go Binary</h3>
+              <p className="body-md" style={{ marginBottom: 16 }}>Compile the Go CLI orchestrator from the project root:</p>
               <CodeBlock>
                 <span className="prompt-sym">$</span>
-                <code>kode tui</code>
+                <code>go build -o bin/kode ./cmd/kode</code>
               </CodeBlock>
-              <p className="body-md" style={{ marginBottom: 16 }}>
-                The TUI provides a chat interface, context graph, generation status, gatekeeper verdicts, and file diffs.
+              <p className="body-md" style={{ marginBottom: 24 }}>
+                This creates a single executable file in `bin/kode` (or `bin/kode.exe` on Windows).
               </p>
-              <div style={{ marginBottom: 16 }}>
-                <span style={{ color: 'var(--ink)', fontWeight: 700 }}>[+] Tab Mode:</span> <span style={{ color: 'var(--body)' }}>Press <code>Tab</code> to switch between Build mode and Plan mode.</span>
+
+              <h3 style={{ fontSize: 18, fontWeight: 700, color: 'var(--ink)', marginBottom: 12, marginTop: 24 }}>2. TUI Setup (Requires Node.js & Bun)</h3>
+              <p className="body-md" style={{ marginBottom: 16 }}>Install the globally required package manager and build the frontend assets:</p>
+              <CodeBlock>
+                <span className="prompt-sym">$</span>
+                <code>npm install -g bun</code>
+              </CodeBlock>
+              <CodeBlock>
+                <span className="prompt-sym">$</span>
+                <code>cd third_party/opencode && bun install && cd ../..</code>
+              </CodeBlock>
+
+              <h3 style={{ fontSize: 18, fontWeight: 700, color: 'var(--ink)', marginBottom: 12, marginTop: 24 }}>3. Run the TUI</h3>
+              <p className="body-md" style={{ marginBottom: 16 }}>Initialize TUI with interactive terminal controls:</p>
+              <CodeBlock>
+                <span className="prompt-sym">$</span>
+                <code>./bin/kode tui</code>
+              </CodeBlock>
+            </div>
+
+            {/* Section 3: Verification Gates */}
+            <div id="gates" className="docs-section">
+              <div className="heading-md" style={{ marginBottom: 16 }}>The 6 Verification Gates</div>
+              <p className="body-md" style={{ marginBottom: 24 }}>
+                Before any patch is written to disk, it must satisfy all configured gatekeepers:
+              </p>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                {[
+                  ['1. Syntax Gate', 'Validates compile-ready code. Leverages Tree-sitter AST validation where possible, falling back to fast regex heuristics. Parses Go, TypeScript, JavaScript, Python, and Rust.'],
+                  ['2. Imports Gate', 'Cross-references generated import paths against the local dependency graph. Rejects imports referencing hallucinated packages.'],
+                  ['3. Calls Gate', 'Validates function and method call sites to ensure targeted symbols exist with compatible signatures, resolving the primary source of LLM hallucinations.'],
+                  ['4. Blast Radius Gate', 'Analyzes code churn metrics. Walks the reverse dependency graph and blocks patches if the modified files downstream impact exceeds configured limits.'],
+                  ['5. Architecture Gate', 'Enforces strict modular boundaries. Checks imports against modular layers in the configuration (e.g. preventing database layers from importing route handlers).'],
+                  ['6. Security Gate', 'Scans files using Sicario SAST engine. Parses generated AST structure and flags potential vulnerabilities (e.g. SQL injection, hardcoded secrets, XSS) before writes occur.'],
+                ].map(([gate, desc]) => (
+                  <div key={gate} style={{ padding: '16px', background: '#09080d', borderRadius: 8, border: '1px solid var(--hairline-strong)' }}>
+                    <div style={{ color: 'var(--ink)', fontWeight: 700, fontSize: 16, marginBottom: 8 }}>{gate}</div>
+                    <p style={{ color: 'var(--body)', fontSize: 14, margin: 0, lineHeight: 1.6 }}>{desc}</p>
+                  </div>
+                ))}
               </div>
-              <div style={{ marginBottom: 16 }}>
-                <span style={{ color: 'var(--ink)', fontWeight: 700 }}>[+] File Search:</span> <span style={{ color: 'var(--body)' }}>Type <code>@</code> to fuzzy-search and attach files to your prompt.</span>
+            </div>
+
+            {/* Section 4: Commands Reference */}
+            <div id="commands" className="docs-section">
+              <div className="heading-md" style={{ marginBottom: 16 }}>Commands Reference</div>
+              <p className="body-md" style={{ marginBottom: 20 }}>
+                List of registered subcommands on the Go CLI orchestrator:
+              </p>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                {[
+                  ['kode init', 'Scaffolds configuration files inside the `.kode/` folder.'],
+                  ['kode plan [task]', 'Constructs a surgical 8K context graph identifying modified and reference files.'],
+                  ['kode generate [prompt]', 'Queries the LLM interface to generate patch alternatives.'],
+                  ['kode verify --input [file]', 'Manually runs all 6 verification checks on the target file.'],
+                  ['kode run [prompt]', 'Generates, validates, and applies patches in a single pipeline.'],
+                  ['kode loop [task]', 'Initiates the full workflow loop: plan, critique, generate, verify, and test.'],
+                  ['kode explain [check]', 'Displays markdown detail outlining errors and fixes for syntax, imports, calls, etc.'],
+                  ['kode daemon --poll [sec]', 'Runs background agent watching repository status and alerting on technical debt decay.'],
+                  ['kode mcp serve', 'Exposes Kode verification tools to external editors using Model Context Protocol.'],
+                  ['kode golf [file]', 'Spins Ghost worktrees to run competitive optimization benchmarks against code.'],
+                  ['kode stats', 'Displays and summarizes the gatekeeper execution audit logs.'],
+                  ['kode tui', 'Launches the React-based interactive terminal workspace.'],
+                ].map(([cmd, desc]) => (
+                  <div key={cmd} style={{ display: 'flex', gap: 16, padding: '16px 0', borderBottom: '1px solid var(--hairline)', flexWrap: 'wrap' }}>
+                    <code style={{ color: 'var(--ink)', fontWeight: 700, minWidth: 200, fontSize: 15 }}>{cmd}</code>
+                    <span style={{ color: 'var(--body)', fontSize: 15, flex: 1 }}>{desc}</span>
+                  </div>
+                ))}
               </div>
-              <div style={{ marginBottom: 16 }}>
-                <span style={{ color: 'var(--ink)', fontWeight: 700 }}>[+] Time Travel:</span> <span style={{ color: 'var(--body)' }}>Type <code>/undo</code> and <code>/redo</code> to safely revert ast-level patches without touching git.</span>
-              </div>
             </div>
 
-            <div id="ghost" className="docs-section">
-              <div className="heading-md" style={{ marginBottom: 16 }}>Ghost branches</div>
-              <p className="body-md" style={{ marginBottom: 16 }}>Kode can explore multiple implementation paths in parallel via Ghost Branches:</p>
-              <CodeBlock>
-                <span className="prompt-sym">$</span>
-                <code>kode loop --branches=3 "optimize the database query"</code>
-              </CodeBlock>
-              <p className="body-md">
-                Kode will create 3 hidden git worktrees, attempt 3 distinct strategies, score them against the Verification Gates, and only present the winning patch to you.
-              </p>
-            </div>
-
-            <div id="daemon" className="docs-section">
-              <div className="heading-md" style={{ marginBottom: 16 }}>Daemon mode</div>
-              <p className="body-md" style={{ marginBottom: 16 }}>Run Kode as a silent background watcher:</p>
-              <CodeBlock>
-                <span className="prompt-sym">$</span>
-                <code>kode daemon --poll 30 --threshold 40</code>
-              </CodeBlock>
-              <p className="body-md">
-                The daemon polls your git history every 30 seconds. If blast radius metrics decay, it speculatively fixes technical debt on a ghost branch and prompts you via TUI IPC to merge the fix.
-              </p>
-            </div>
-
-            <div id="mcp" className="docs-section">
-              <div className="heading-md" style={{ marginBottom: 16 }}>MCP server</div>
-              <p className="body-md" style={{ marginBottom: 16 }}>Expose Kode's Context Engine and Verification loop to external IDEs (like Claude Desktop or Antigravity):</p>
-              <CodeBlock>
-                <span className="prompt-sym">$</span>
-                <code>kode mcp serve</code>
-              </CodeBlock>
-              <p className="body-md">
-                Uses the standard Model Context Protocol (stdio JSON-RPC) to expose <code>kode_plan</code> and <code>kode_apply_verified</code> as tools.
-              </p>
-            </div>
-
+            {/* Section 5: Config Spec */}
             <div id="config" className="docs-section">
-              <div className="heading-md" style={{ marginBottom: 16 }}>Configuration</div>
+              <div className="heading-md" style={{ marginBottom: 16 }}>Configuration Specification</div>
               <p className="body-md" style={{ marginBottom: 16 }}>
-                Kode is configured through <code style={{ background: 'var(--surface-card)', padding: '2px 6px', borderRadius: 4, border: '1px solid var(--hairline)' }}>.kode/config.json</code>:
+                Manage project thresholds inside <code style={{ background: 'var(--surface-card)', padding: '2px 6px', borderRadius: 4 }}>.kode/config.json</code>:
               </p>
               <CodeBlock>
-                <pre style={{ fontFamily: 'var(--font-mono)', whiteSpace: 'pre-wrap', margin: 0, color: '#8b5cf6' }}>{`{
+                <pre style={{ fontFamily: 'var(--font-mono)', whiteSpace: 'pre-wrap', margin: 0, color: '#a78bfa', fontSize: 13 }}>{`{
   "provider": "openai",
   "model": "gpt-4o",
   "tdd_mode": true,
   "max_blast_radius": 5,
   "token_budget_usd": 0.50,
-  "blindfold_mode": false
+  "blindfold_mode": false,
+  "architecture_rules": {
+    "disallowed_imports": {
+      "internal/db": ["internal/gateway", "internal/daemon"]
+    }
+  }
 }`}</pre>
               </CodeBlock>
             </div>
 
-            <div id="commands" className="docs-section">
-              <div className="heading-md" style={{ marginBottom: 16 }}>Commands reference</div>
-              {[
-                ['kode init', 'Scaffold .kode/config.json with auto-detected test command'],
-                ['kode plan <task>', 'Build a surgical 8K context graph for the given task'],
-                ['kode generate <prompt>', 'Generate patches via LLM'],
-                ['kode verify --input <file>', 'Run all 5 gate checks on a file'],
-                ['kode run <prompt>', 'Full generate -> verify -> apply pipeline'],
-                ['kode loop <task>', 'Full Plan -> Generate -> Verify -> Apply cycle'],
-                ['kode loop --branches=N', 'Speculatively fix using parallel ghost branches'],
-                ['kode daemon', 'Run background tech debt watcher'],
-                ['kode mcp serve', 'Start the Model Context Protocol server'],
-                ['kode stats', 'Analyze gatekeeper audit log'],
-                ['kode tui', 'Launch interactive terminal UI'],
-              ].map(([cmd, desc]) => (
-                <div key={cmd} style={{ display: 'flex', gap: 16, padding: '12px 0', borderBottom: '1px solid var(--hairline)', flexWrap: 'wrap' }}>
-                  <code style={{ color: 'var(--ink)', fontWeight: 700, minWidth: 220, fontSize: 15 }}>{cmd}</code>
-                  <span style={{ color: 'var(--body)', fontSize: 15 }}>{desc}</span>
-                </div>
-              ))}
+            {/* Section 6: Interactive TUI */}
+            <div id="tui" className="docs-section">
+              <div className="heading-md" style={{ marginBottom: 16 }}>Interactive TUI Workspace</div>
+              <p className="body-md" style={{ marginBottom: 20 }}>
+                The interactive React-based TUI (`kode tui`) runs in the terminal, bringing the visual power of browser interfaces directly into standard shells.
+              </p>
+              
+              <h3 style={{ fontSize: 18, fontWeight: 700, color: 'var(--ink)', marginBottom: 12 }}>Core Keyboard Controls</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 24 }}>
+                {[
+                  ['Tab', 'Toggles between generative Chat modes and structural planning Graphs.'],
+                  ['Ctrl + P', 'Brings up the Command Palette to trigger actions.'],
+                  ['Ctrl + T', 'Switches between speculative code variations.'],
+                  ['Esc', 'Interrupts active generation or verification loops.'],
+                  ['@ [filename]', 'Triggers local file search to attach context to the prompt.'],
+                  ['Ctrl + C', 'Safely exits the terminal workspace.'],
+                ].map(([key, action]) => (
+                  <div key={key} style={{ display: 'flex', gap: 16 }}>
+                    <kbd style={{ background: '#1c1b22', border: '1px solid var(--hairline-strong)', padding: '2px 8px', borderRadius: 4, fontFamily: 'var(--font-mono)', minWidth: 100, textAlign: 'center', color: 'var(--ink)' }}>{key}</kbd>
+                    <span style={{ color: 'var(--body)' }}>{action}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Section 7: Advanced Features */}
+            <div id="advanced" className="docs-section">
+              <div className="heading-md" style={{ marginBottom: 16 }}>Advanced Features</div>
+              
+              <h3 style={{ fontSize: 18, fontWeight: 700, color: 'var(--ink)', marginBottom: 8 }}>Ghost Branches</h3>
+              <p className="body-md" style={{ marginBottom: 20 }}>
+                Spins up hidden git worktrees in parallel to explore multiple implementation paths. Each path runs through the Verification pipeline. The orchestrator merges only the best-performing result.
+              </p>
+
+              <h3 style={{ fontSize: 18, fontWeight: 700, color: 'var(--ink)', marginBottom: 8, marginTop: 24 }}>Blindfold Mode</h3>
+              <p className="body-md" style={{ marginBottom: 20 }}>
+                Obfuscates code identifiers (e.g. package, class, function names) using SHA-256 hashes before sending context payloads to remote LLM providers, protecting proprietary software geometry.
+              </p>
+
+              <h3 style={{ fontSize: 18, fontWeight: 700, color: 'var(--ink)', marginBottom: 8, marginTop: 24 }}>Code Golfing</h3>
+              <p className="body-md" style={{ marginBottom: 20 }}>
+                Runs competitive benchmark swarms via `kode golf [file]`. Pits multiple optimization paths (concurrency, memory consumption, algorithmic Big-O) against baseline test benchmarks and merges the winner.
+              </p>
             </div>
           </div>
 
