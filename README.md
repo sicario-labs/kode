@@ -113,6 +113,21 @@ To manually compile and build the workspace:
    ./bin/kode tui
    ```
 
+### 4. Termux (Android)
+To run Kode inside the Termux app on Android:
+1. Install compiler and Node runtimes:
+   ```bash
+   pkg install golang nodejs git clang make
+   ```
+2. Build the ARM64 Go engine locally:
+   ```bash
+   go build -o bin/kode ./cmd/kode
+   ```
+3. Set up TUI dependencies (falling back from Bun to NPM):
+   ```bash
+   cd third_party/opencode && npm install && cd ../..
+   ```
+
 - Core Commands
 - `kode plan <task>` — Build a surgical context graph
 - `kode verify --input <file>` — Verify file content through the gate pipeline
