@@ -8,7 +8,7 @@
   <p>
     <a href="https://github.com/sicario-labs/kode/actions/workflows/ci.yml"><img src="https://github.com/sicario-labs/kode/actions/workflows/ci.yml/badge.svg?branch=master&v=1" alt="CI Status" /></a>
     <a href="https://github.com/sicario-labs/kode/releases"><img src="https://img.shields.io/github/v/release/sicario-labs/kode?color=blue&label=Release&cache=1" alt="Release" /></a>
-    <a href="https://github.com/sicario-labs/kode/blob/master/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License" /></a>
+    <a href="https://github.com/sicario-labs/kode/blob/master/LICENSE"><img src="https://img.shields.io/badge/license-MIT%20%2F%20AGPL--3.0-blue.svg" alt="License" /></a>
   </p>
 </div>
 
