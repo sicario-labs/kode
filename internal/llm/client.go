@@ -25,6 +25,23 @@ func NewClient(cfg Config) *Client {
 	}
 }
 
+// sanitizeMessages converts tool-role messages to user-role messages.
+// Many upstream APIs (Anthropic, openmodel.ai, etc.) do not accept a
+// "tool" role — they use tool_result content blocks inside user messages
+// instead. This function normalizes the request so it works with any
+// OpenAI-compatible endpoint.
+func sanitizeMessages(messages []Message) []Message {
+	out := make([]Message, 0, len(messages))
+	for _, m := range messages {
+		if m.Role == RoleTool {
+			out = append(out, Message{Role: RoleUser, Content: m.Content})
+		} else {
+			out = append(out, m)
+		}
+	}
+	return out
+}
+
 func (c *Client) Chat(ctx context.Context, req ChatRequest) (*ChatResponse, error) {
 	if err := c.config.Valid(); err != nil {
 		return nil, err
@@ -33,6 +50,8 @@ func (c *Client) Chat(ctx context.Context, req ChatRequest) (*ChatResponse, erro
 	if req.Model == "" {
 		req.Model = c.config.Model
 	}
+
+	req.Messages = sanitizeMessages(req.Messages)
 
 	body, err := json.Marshal(req)
 	if err != nil {

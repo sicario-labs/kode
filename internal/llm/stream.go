@@ -28,6 +28,7 @@ func (c *Client) ChatStream(ctx context.Context, req ChatRequest) (<-chan Stream
 
 	streamReq := req
 	streamReq.Stream = true
+	streamReq.Messages = sanitizeMessages(streamReq.Messages)
 
 	body, err := json.Marshal(streamReq)
 	if err != nil {

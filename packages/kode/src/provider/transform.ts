@@ -448,6 +448,30 @@ export function message(msgs: ModelMessage[], model: Provider.Model, options: Re
     msgs = applyCaching(msgs, model)
   }
 
+  // For @ai-sdk/gateway (Vercel's AI Gateway), the upstream API rejects
+  // messages with role "tool". Convert them to "user" role with text content.
+  if (model.api.npm === "@ai-sdk/gateway") {
+    msgs = msgs.map((msg) => {
+      if (msg.role !== "tool") return msg
+      if (!Array.isArray(msg.content)) return { ...msg, role: "user" as const }
+      const text = msg.content
+        .filter((p): p is ToolResultPart => p.type === "tool-result")
+        .map((p) => {
+          if (p.output.type === "text") return p.output.value
+          if (p.output.type === "content") {
+            return p.output.value
+              .filter((c) => c.type === "text")
+              .map((c) => c.text)
+              .join("\n")
+          }
+          return ""
+        })
+        .filter(Boolean)
+        .join("\n")
+      return { role: "user" as const, content: text || "tool result" }
+    })
+  }
+
   // Remap providerOptions keys from stored providerID to expected SDK key
   const key = sdkKey(model.api.npm)
   if (key && key !== model.providerID) {
