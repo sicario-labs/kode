@@ -1,0 +1,14 @@
+{
+  "permission": {
+    "bash": "ask",
+    "edit": "allow",
+    "glob": "allow",
+    "grep": "allow",
+    "question": "allow",
+    "read": "allow",
+    "task": "ask",
+    "todowrite": "allow",
+    "webfetch": "allow",
+    "websearch": "allow"
+  }
+}
