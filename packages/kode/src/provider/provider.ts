@@ -1758,31 +1758,27 @@ export const layer = Layer.effect(
           // APIs (Vercel AI Gateway, openmodel.ai, etc.) use Rust serde and
           // reject role: "tool" — they only accept "user", "assistant", "system".
           // Convert tool messages to user messages before they leave the TUI.
-          if (opts.body && opts.method === "POST" && typeof opts.body === "string") {
-            try {
-              const body = JSON.parse(opts.body as string)
+          if (opts.body && opts.method === "POST") {
+            const bodies: Array<Record<string, any>> = []
+            if (typeof opts.body === "string") {
+              try { bodies.push(JSON.parse(opts.body)) } catch {}
+            } else if (typeof opts.body === "object" && opts.body !== null) {
+              bodies.push(opts.body)
+            }
+            for (const body of bodies) {
               let modified = false
-              if (Array.isArray(body.messages)) {
-                body.messages = body.messages.map((m: any) => {
-                  if (m?.role === "tool") {
-                    modified = true
-                    return { ...m, role: "user" }
-                  }
-                  return m
-                })
-              }
-              if (Array.isArray(body.prompt)) {
-                body.prompt = body.prompt.map((m: any) => {
-                  if (m?.role === "tool") {
-                    modified = true
-                    return { ...m, role: "user" }
-                  }
-                  return m
-                })
+              for (const field of ["messages", "prompt"] as const) {
+                if (Array.isArray(body[field])) {
+                  body[field] = body[field].map((m: any) => {
+                    if (m?.role === "tool") {
+                      modified = true
+                      return { ...m, role: "user" }
+                    }
+                    return m
+                  })
+                }
               }
               if (modified) opts.body = JSON.stringify(body)
-            } catch {
-              // malformed JSON — skip
             }
           }
 
