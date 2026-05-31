@@ -176,7 +176,7 @@ function custom(dep: CustomDep): Record<string, CustomLoader> {
         Boolean(yield* dep.auth(input.id)) ||
         Boolean((yield* dep.config()).provider?.["Kode"]?.options?.apiKey)
 
-      const baseURL = "https://api.trykode.xyz/v1"
+      const baseURL = process.env.KODE_LLM_ENDPOINT || "https://api.trykode.xyz/v1"
 
       const trykodeModels: Record<string, Model> = {
         "deepseek-v4-flash": {
@@ -1751,6 +1751,38 @@ export const layer = Layer.effect(
                 }
               }
               opts.body = JSON.stringify(body)
+            }
+          }
+
+          // Sanitize tool-role messages across ALL providers. Some upstream
+          // APIs (Vercel AI Gateway, openmodel.ai, etc.) use Rust serde and
+          // reject role: "tool" — they only accept "user", "assistant", "system".
+          // Convert tool messages to user messages before they leave the TUI.
+          if (opts.body && opts.method === "POST" && typeof opts.body === "string") {
+            try {
+              const body = JSON.parse(opts.body as string)
+              let modified = false
+              if (Array.isArray(body.messages)) {
+                body.messages = body.messages.map((m: any) => {
+                  if (m?.role === "tool") {
+                    modified = true
+                    return { ...m, role: "user" }
+                  }
+                  return m
+                })
+              }
+              if (Array.isArray(body.prompt)) {
+                body.prompt = body.prompt.map((m: any) => {
+                  if (m?.role === "tool") {
+                    modified = true
+                    return { ...m, role: "user" }
+                  }
+                  return m
+                })
+              }
+              if (modified) opts.body = JSON.stringify(body)
+            } catch {
+              // malformed JSON — skip
             }
           }
 
