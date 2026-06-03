@@ -252,6 +252,24 @@ export const Info = Schema.Struct({
       url: Schema.optional(Schema.String).annotate({ description: "Enterprise URL" }),
     }),
   ),
+  blindfold: Schema.optional(
+    Schema.Struct({
+      enabled: Schema.optional(Schema.Boolean).annotate({
+        description:
+          "Enable Blindfold: obfuscate user-defined identifiers in outbound LLM requests and restore them on the way back. Defaults to false.",
+      }),
+      language: Schema.optional(Schema.Literal("typescript")).annotate({
+        description: "Language whose identifiers are shielded. Only 'typescript' (TS/JS) is supported in this slice.",
+      }),
+      on_parse_error: Schema.optional(Schema.Literal("block")).annotate({
+        description:
+          "What to do when a payload cannot be fully parsed/shielded. 'block' fails closed: the request is never sent.",
+      }),
+    }),
+  ).annotate({
+    description:
+      "Blindfold zero-exfiltration layer. Shields proprietary identifiers from cloud LLMs while keeping keywords and stdlib in the clear. See https://kode.ai/docs/blindfold",
+  }),
   tool_output: Schema.optional(
     Schema.Struct({
       max_lines: Schema.optional(PositiveInt).annotate({

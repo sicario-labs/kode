@@ -1,4 +1,5 @@
 import { TuiThreadCommand } from "./cli/cmd/tui/thread"
+import { BlindfoldCommand } from "./cli/cmd/blindfold"
 import { UI } from "./cli/ui"
 import { InstallationVersion } from "@kode/core/installation/version"
 import { EOL } from "os"
@@ -17,6 +18,7 @@ const cli = (await import("yargs")).default(process.argv.slice(2))
   .scriptName("kode")
   .wrap(100)
   .command(TuiThreadCommand)
+  .command(BlindfoldCommand)
   .version("version", "show version number", InstallationVersion)
   .alias("version", "v")
   .help("help", "show help")
