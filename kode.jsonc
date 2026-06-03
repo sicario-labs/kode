@@ -10,5 +10,12 @@
     "todowrite": "allow",
     "webfetch": "allow",
     "websearch": "allow"
+  },
+  // Blindfold: shield proprietary identifiers from cloud LLMs (zero-exfiltration).
+  // Version-controlled and reviewable by the security team, next to permissions.
+  "blindfold": {
+    "enabled": true,
+    "language": "typescript",
+    "on_parse_error": "block"
   }
 }

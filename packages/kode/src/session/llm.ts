@@ -26,6 +26,7 @@ import * as OtelTracer from "@effect/opentelemetry/Tracer"
 import { LLMAISDK } from "./llm/ai-sdk"
 import { LLMNativeRuntime } from "./llm/native-runtime"
 import { LLMRequestPrep } from "./llm/request"
+import { Blindfold } from "@/blindfold/wrapper"
 
 const log = Log.create({ service: "llm" })
 export const OUTPUT_TOKEN_MAX = ProviderTransform.OUTPUT_TOKEN_MAX
@@ -321,8 +322,51 @@ const live: Layer.Layer<
                       input.model,
                       prepared.messageTransformOptions,
                     )
+                    // Blindfold (Decision 1): obfuscate user identifiers right
+                    // before dispatch, the last mutation before the bytes leave
+                    // the machine. No-op unless `blindfold.enabled` is set, and
+                    // fail-closed (throws) if a payload cannot be fully shielded.
+                    args.params.prompt = Blindfold.obfuscateOutbound({
+                      prompt: args.params.prompt,
+                      config: cfg.blindfold,
+                      endpoint: input.model.api.id,
+                    })
                   }
                   return args.params
+                },
+                // Blindfold inbound (Decision 5): restore shielded identifiers in
+                // the streamed response. Known aliases -> real names; new
+                // model-authored names pass through. Guarded so it can never
+                // break the stream — on any error the chunk is emitted as-is.
+                async wrapStream({ doStream }) {
+                  const result = await doStream()
+                  const reverser = Blindfold.makeStreamReverser(cfg.blindfold)
+                  if (!reverser) return result
+                  const endpoint = input.model.api.id
+                  let lastTextId: string | undefined
+                  const transform = new TransformStream({
+                    transform(part: any, controller) {
+                      try {
+                        if (part?.type === "text-delta" && typeof part.text === "string") {
+                          lastTextId = part.id
+                          controller.enqueue({ ...part, text: reverser.push(part.text) })
+                          return
+                        }
+                      } catch {
+                        /* fall through and emit unchanged */
+                      }
+                      controller.enqueue(part)
+                    },
+                    flush(controller) {
+                      try {
+                        const tail = reverser.end(endpoint)
+                        if (tail) controller.enqueue({ type: "text-delta", id: lastTextId ?? "blindfold-tail", text: tail })
+                      } catch {
+                        /* nothing buffered worth risking the stream over */
+                      }
+                    },
+                  })
+                  return { ...result, stream: result.stream.pipeThrough(transform) }
                 },
               },
             ],
