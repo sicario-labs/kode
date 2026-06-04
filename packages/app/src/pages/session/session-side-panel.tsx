@@ -16,6 +16,7 @@ import { FileIcon } from "@kode/ui/file-icon"
 import { useSDK } from "@/context/sdk"
 
 import FileTree from "@/components/file-tree"
+import { PreviewPanel } from "@/components/PreviewPanel"
 import { SessionContextUsage } from "@/components/session-context-usage"
 import { SessionContextTab, SortableTab, FileVisual } from "@/components/session"
 import { AntigravityArtifactViewer } from "@/components/antigravity-artifacts"
@@ -252,6 +253,46 @@ export function SessionSidePanel(props: {
         }
       })
       .catch(() => {})
+  })
+
+  // Live Preview Tunnel state sync
+  const [tunnelUrl, setTunnelUrl] = createSignal("")
+
+  createEffect(() => {
+    let active = true
+    const checkTunnel = () => {
+      if (!active) return
+      sdk.client.file
+        .read({ path: ".kode/tunnel.json" })
+        .then((res) => {
+          if (!active) return
+          if (res && res.data) {
+            try {
+              const data = JSON.parse(res.data.content)
+              if (data && data.url) {
+                setTunnelUrl(data.url)
+              } else {
+                setTunnelUrl("")
+              }
+            } catch (e) {
+              setTunnelUrl("")
+            }
+          } else {
+            setTunnelUrl("")
+          }
+        })
+        .catch(() => {
+          if (active) setTunnelUrl("")
+        })
+    }
+
+    checkTunnel()
+    const interval = setInterval(checkTunnel, 2500)
+
+    onCleanup(() => {
+      active = false
+      clearInterval(interval)
+    })
   })
 
   // Collapsible active subagents in session
@@ -547,6 +588,12 @@ export function SessionSidePanel(props: {
                               <div>Overview</div>
                             </div>
                           </Tabs.Trigger>
+                          <Tabs.Trigger value="preview" class="flex items-center gap-1.5 font-medium px-3 py-1.5 rounded">
+                            <div class="flex items-center gap-1.5">
+                              <Icon name="eye" size="small" class="opacity-70" />
+                              <div>Live Preview</div>
+                            </div>
+                          </Tabs.Trigger>
                         </Show>
                         <Show when={contextOpen()}>
                           <Tabs.Trigger
@@ -606,6 +653,11 @@ export function SessionSidePanel(props: {
                       <Tabs.Content value="review" class="flex flex-col h-full overflow-y-auto contain-strict bg-v2-background-bg-deep p-4 text-v2-text-text-base no-scrollbar">
                         <Show when={activeTab() === "review"}>
                           <OverviewPanel />
+                        </Show>
+                      </Tabs.Content>
+                      <Tabs.Content value="preview" class="flex flex-col h-full overflow-hidden contain-strict bg-v2-background-bg-deep text-v2-text-text-base">
+                        <Show when={activeTab() === "preview"}>
+                          <PreviewPanel tunnelUrl={tunnelUrl()} />
                         </Show>
                       </Tabs.Content>
                     </Show>

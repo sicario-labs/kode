@@ -1384,7 +1384,7 @@ export function Prompt(props: PromptProps) {
     if (leader()) return theme.border
     if (store.mode === "shell") return theme.primary
     const agent = local.agent.current()
-    if (!agent) return theme.border
+    if (!agent) return theme.primary
     return local.agent.color(agent.name)
   })
 

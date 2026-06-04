@@ -2389,19 +2389,15 @@ export default function Layout(props: ParentProps) {
 
   const NewSidebar = () => {
     const [pinnedStore, setPinnedStore] = persisted(
-      Persist.global("sidebar-pinned-sessions", { list: [] as string[] }),
+      Persist.global("sidebar-pinned-sessions"),
       createStore({ list: [] as string[] })
     )
     const [unreadStore, setUnreadStore] = persisted(
-      Persist.global("sidebar-unread-sessions", { list: [] as string[] }),
+      Persist.global("sidebar-unread-sessions"),
       createStore({ list: [] as string[] })
     )
     const [sidebarSettings, setSidebarSettings] = persisted(
-      Persist.global("sidebar-display-options-v1", {
-        groupBy: "project" as "project" | "status" | "none",
-        sortBy: "updated" as "updated" | "alphabetical" | "created",
-        subtitle: "none" as "worktree" | "none"
-      }),
+      Persist.global("sidebar-display-options-v1"),
       createStore({
         groupBy: "project" as "project" | "status" | "none",
         sortBy: "updated" as "updated" | "alphabetical" | "created",

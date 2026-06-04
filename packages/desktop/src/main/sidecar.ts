@@ -1,4 +1,5 @@
 import { drizzle } from "drizzle-orm/node-sqlite/driver"
+import { resolveDesktopKodeBinary } from "./kode-binary"
 import * as http from "node:http"
 import * as tls from "node:tls"
 
@@ -58,7 +59,7 @@ async function start(command: StartCommand) {
     useSystemCertificates()
     useEnvProxy()
     const { Database, JsonMigration, Log, Server } = await import("virtual:kode-server")
-    await Log.init({ level: "WARN" })
+    await Log.init({ level: "WARN", print: true })
 
     if (command.needsMigration) {
       await JsonMigration.run(drizzle({ client: Database.Client().$client }), {
@@ -80,7 +81,7 @@ async function start(command: StartCommand) {
       hostname: command.hostname,
       username: "kode",
       password: command.password,
-      cors: ["oc://renderer"],
+      cors: ["kode://renderer"],
     })
     parentPort.postMessage({ type: "ready" })
   } catch (error) {
@@ -100,10 +101,12 @@ async function stop() {
 }
 
 function prepareSidecarEnv(password: string, userDataPath: string) {
+  const kodeBin = resolveDesktopKodeBinary()
   Object.assign(process.env, {
     KODE_SERVER_USERNAME: "kode",
     KODE_SERVER_PASSWORD: password,
     XDG_STATE_HOME: process.env.XDG_STATE_HOME ?? userDataPath,
+    ...(kodeBin ? { KODE_BIN: kodeBin } : {}),
   })
 }
 

@@ -17,8 +17,8 @@ const xml = `<?xml version="1.0" encoding="UTF-8"?>
   <name>${productName}</name>
   <summary>${summary}</summary>
 
-  <developer id="ly.anoma">
-    <name>Anomaly Innovations Inc.</name>
+  <developer id="labs.sicario">
+    <name>Sicario Labs Inc.</name>
   </developer>
 
   <description>

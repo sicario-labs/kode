@@ -144,6 +144,16 @@ export const layer = Layer.effect(
 
     const decode = (row: typeof SessionMessageTable.$inferSelect) =>
       decodeMessage({ ...row.data, id: row.id, type: row.type }).pipe(
+        Effect.tapError((err) => {
+          console.error("=== DECODE ERROR FOR ROW ===", {
+            id: row.id,
+            type: row.type,
+            session_id: row.session_id,
+            error: String(err),
+            data: JSON.stringify(row.data)
+          })
+          return Effect.succeed(undefined)
+        }),
         Effect.mapError(
           () =>
             new MessageDecodeError({

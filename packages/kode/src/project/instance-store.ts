@@ -8,6 +8,8 @@ import { Context, Deferred, Duration, Effect, Exit, Layer, Scope } from "effect"
 import { type InstanceContext } from "./instance-context"
 import { InstanceBootstrap } from "./bootstrap-service"
 import * as Project from "./project"
+import * as fs from "node:fs"
+import * as path from "node:path"
 
 export interface LoadInput {
   directory: string
@@ -39,8 +41,34 @@ export const layer: Layer.Layer<Service, never, Project.Service | InstanceBootst
     const scope = yield* Scope.Scope
     const cache = new Map<string, Entry>()
 
+    const loadEnvFile = (dir: string) => {
+      const envPath = path.join(dir, ".env")
+      if (!fs.existsSync(envPath)) return
+      try {
+        const content = fs.readFileSync(envPath, "utf8")
+        for (let line of content.split(/\r?\n/)) {
+          line = line.trim()
+          if (!line || line.startsWith("#")) continue
+          if (line.startsWith("export ")) {
+            line = line.slice(7).trim()
+          }
+          const eq = line.indexOf("=")
+          if (eq <= 0) continue
+          const key = line.slice(0, eq).trim()
+          let val = line.slice(eq + 1).trim()
+          if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+            val = val.slice(1, -1)
+          }
+          process.env[key] = val
+        }
+      } catch (err) {
+        console.error("failed to load .env file from project directory", err)
+      }
+    }
+
     const boot = (input: LoadInput & { directory: string }) =>
       Effect.gen(function* () {
+        loadEnvFile(input.directory)
         const ctx: InstanceContext =
           input.project && input.worktree
             ? {

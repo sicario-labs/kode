@@ -50,7 +50,6 @@ const OPENMODEL_PROVIDER: ModelsDev.Provider = {
         limit: { context: d.context, output: d.maxOutput },
         cost: { input: d.inputCost, output: d.outputCost },
         modalities: { input: ["text"], output: ["text"] },
-        status: "active",
         provider: { npm: "@ai-sdk/anthropic", api: "https://api.openmodel.ai/v1" },
       },
     ])

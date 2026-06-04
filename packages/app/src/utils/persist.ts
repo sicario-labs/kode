@@ -252,7 +252,8 @@ function migrateLegacy(input: {
 
   if (!input.legacyStore) return null
 
-  for (const key of input.keys) {
+  const keys = Array.isArray(input.keys) ? input.keys : []
+  for (const key of keys) {
     const raw = input.legacyStore.getItem(key)
     if (raw === null) continue
 
@@ -317,7 +318,8 @@ async function migrateLegacyAsync(input: {
 
   if (!input.legacyStore) return null
 
-  for (const key of input.keys) {
+  const keys = Array.isArray(input.keys) ? input.keys : []
+  for (const key of keys) {
     const raw = await input.legacyStore.getItem(key)
     if (raw === null) continue
 

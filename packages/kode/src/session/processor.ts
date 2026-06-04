@@ -78,6 +78,7 @@ interface ProcessorContext extends Input {
   needsCompaction: boolean
   currentText: MessageV2.TextPart | undefined
   reasoningMap: Record<string, MessageV2.ReasoningPart>
+  streamInput?: any
 }
 
 type StreamEvent = LLMEvent
@@ -420,6 +421,24 @@ export const layer = Layer.effect(
                 ? { ...value.providerMetadata, providerExecuted: true }
                 : value.providerMetadata,
             }))
+
+            if (value.providerExecuted === false || value.providerExecuted === undefined) {
+              const t = ctx.streamInput?.tools?.[value.name]
+              if (t && t.execute) {
+                yield* Effect.promise(() =>
+                  t.execute(input, {
+                    toolCallId: value.id,
+                    messages: ctx.streamInput?.messages ?? [],
+                    abortSignal: new AbortController().signal,
+                  }) as Promise<any>
+                ).pipe(
+                  Effect.flatMap((result) => completeToolCall(value.id, result as any)),
+                  Effect.catch((error: any) => failToolCall(value.id, error)),
+                  Effect.ensuring(settleToolCall(value.id)),
+                  Effect.forkIn(scope),
+                )
+              }
+            }
 
             const parts = MessageV2.parts(ctx.assistantMessage.id)
             const recentParts = parts.slice(-DOOM_LOOP_THRESHOLD)
@@ -781,6 +800,7 @@ export const layer = Layer.effect(
         slog.info("process")
         ctx.needsCompaction = false
         ctx.shouldBreak = (yield* config.get()).experimental?.continue_loop_on_deny !== true
+        ctx.streamInput = streamInput
 
         return yield* Effect.gen(function* () {
           yield* Effect.gen(function* () {

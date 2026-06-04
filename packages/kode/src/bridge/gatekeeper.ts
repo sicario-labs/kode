@@ -25,7 +25,15 @@ export type ProgressCallback = (event: ProgressEvent) => void
 
 export function resolveKodeBinary(): string {
   const envBin = process.env.KODE_BIN
-  if (envBin) return resolve(envBin)
+  if (envBin) {
+    const resolved = resolve(envBin)
+    try {
+      accessSync(resolved)
+      return resolved
+    } catch {
+      throw new Error(`KODE_BIN is set but binary not found at: ${resolved}`)
+    }
+  }
 
   const cwd = process.cwd()
   const names = process.platform === "win32" ? ["kode.exe", "kode"] : ["kode", "kode.exe"]
@@ -44,7 +52,9 @@ export function resolveKodeBinary(): string {
       return candidate
     } catch {}
   }
-  return candidates[0]
+  throw new Error(
+    `Kode verification binary not found. Searched:\n${candidates.join("\n")}\nSet KODE_BIN to the absolute path of the kode binary.`
+  )
 }
 
 export class VerificationGatekeeper {

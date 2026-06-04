@@ -192,7 +192,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
     const sessionID = params.id
     if (!sessionID) return false
 
-    const diffs = sync.data.session_diff[sessionID]
+    const diffs = sync.data?.session_diff[sessionID]
     if (!diffs) return false
     return diffs.some((diff) => diff.file === path)
   }
@@ -255,7 +255,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
     return paths
   })
   const info = createMemo(() => (params.id ? sync.session.get(params.id) : undefined))
-  const working = createMemo(() => sync.data.session_working(params.id ?? ""))
+  const working = createMemo(() => !!sync.data?.session_working(params.id ?? ""))
   const imageAttachments = createMemo(() =>
     prompt.current().filter((part): part is ImageAttachmentPart => part.type === "image"),
   )
@@ -279,10 +279,10 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
   })
 
   const [elapsedTime, setElapsedTime] = createSignal(0)
-  const diffFiles = createMemo(() => sync.data.session_diff[params.id ?? ""] ?? [])
+  const diffFiles = createMemo(() => sync.data?.session_diff[params.id ?? ""] ?? [])
 
   const lastUserMsg = createMemo(() => {
-    const list = sync.data.message[params.id ?? ""] ?? []
+    const list = sync.data?.message?.[params.id ?? ""] ?? []
     const users = list.filter((m) => m.role === "user")
     return users.at(-1)
   })
@@ -290,7 +290,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
   const lastUserText = createMemo(() => {
     const msg = lastUserMsg()
     if (!msg) return ""
-    const parts = sync.data.part[msg.id] ?? []
+    const parts = sync.data?.part[msg.id] ?? []
     return parts.map((p) => p.type === "text" ? p.text : "").join(" ")
   })
 
@@ -584,7 +584,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
   const hasUserPrompt = createMemo(() => {
     const sessionID = params.id
     if (!sessionID) return false
-    const messages = sync.data.message[sessionID]
+    const messages = sync.data?.message?.[sessionID]
     if (!messages) return false
     return messages.some((m) => m.role === "user")
   })
@@ -825,7 +825,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
   }
 
   const agentList = createMemo(() =>
-    sync.data.agent
+    (sync.data?.agent ?? [])
       .filter((agent) => !agent.hidden && agent.mode !== "primary")
       .map((agent): AtOption => ({ type: "agent", name: agent.name, display: agent.name })),
   )
@@ -894,7 +894,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
         type: "builtin" as const,
       }))
 
-    const custom = sync.data.command.map((cmd) => ({
+    const custom = (sync.data?.command ?? []).map((cmd) => ({
       id: `custom.${cmd.name}`,
       trigger: cmd.name,
       title: cmd.name,
@@ -1352,6 +1352,33 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
     return permission.isAutoAccepting(id, sdk.directory)
   })
 
+  const [dwimObfuscate, setDwimObfuscate] = createSignal(false)
+  const [dwimBranches, setDwimBranches] = createSignal(1)
+
+  const hasDwimKeywords = createMemo(() => {
+    const rawText = prompt.current().map(p => 'content' in p ? p.content : '').join('').toLowerCase()
+    return rawText.includes("scramble") || rawText.includes("blindfold") || rawText.includes("branches") || rawText.includes("branch")
+  })
+
+  createEffect(() => {
+    const rawText = prompt.current().map(p => 'content' in p ? p.content : '').join('').toLowerCase()
+    if (rawText.includes("scramble") || rawText.includes("blindfold")) {
+      setDwimObfuscate(true)
+    } else {
+      setDwimObfuscate(false)
+    }
+    if (rawText.includes("branches") || rawText.includes("branch")) {
+      const match = rawText.match(/(\d+)\s*branch/)
+      if (match) {
+        setDwimBranches(Math.min(5, Math.max(1, parseInt(match[1], 10))))
+      } else {
+        setDwimBranches(3)
+      }
+    } else {
+      setDwimBranches(1)
+    }
+  })
+
   const { abort, handleSubmit } = createPromptSubmit({
     info,
     imageAttachments,
@@ -1707,6 +1734,54 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                     onRemove={removeAttachment}
                     removeLabel={language.t("prompt.attachment.remove")}
                   />
+                  <Show when={hasDwimKeywords()}>
+                    <div class="mx-4 my-2 p-3.5 rounded-xl border border-blue-500/30 bg-blue-500/5 dark:bg-blue-950/20 backdrop-blur-md flex flex-col gap-2.5 transition-all duration-300 shadow-[0_4px_16px_rgba(28,120,227,0.1)]">
+                      <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2 font-semibold text-[12.5px] text-blue-500 dark:text-blue-400">
+                          <svg class="size-4 animate-pulse" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="4" y1="21" x2="4" y2="14" />
+                            <line x1="4" y1="10" x2="4" y2="3" />
+                            <line x1="12" y1="21" x2="12" y2="12" />
+                            <line x1="12" y1="8" x2="12" y2="3" />
+                            <line x1="20" y1="21" x2="20" y2="16" />
+                            <line x1="20" y1="12" x2="20" y2="3" />
+                            <line x1="1" y1="14" x2="7" y2="14" />
+                            <line x1="9" y1="8" x2="15" y2="8" />
+                            <line x1="17" y1="16" x2="23" y2="16" />
+                          </svg>
+                          <span>🤖 DWIM Parameter Tuning Activated</span>
+                        </div>
+                        <span class="text-[10px] text-v2-text-text-faint font-mono tracking-wide uppercase px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-500 dark:text-blue-400">
+                          Conversational overrides
+                        </span>
+                      </div>
+                      <div class="flex flex-wrap gap-5 items-center mt-1">
+                        <label class="flex items-center gap-2 text-[12px] text-v2-text-text-base cursor-pointer select-none">
+                          <input
+                            type="checkbox"
+                            checked={dwimObfuscate()}
+                            onChange={(e) => setDwimObfuscate(e.currentTarget.checked)}
+                            class="rounded border-[#333] bg-v2-background-bg-hover text-blue-500 focus:ring-0 cursor-pointer"
+                          />
+                          <span class="font-medium">Obfuscate Code (Blindfold)</span>
+                        </label>
+                        <div class="flex items-center gap-3 text-[12px] text-v2-text-text-base select-none">
+                          <span class="font-medium text-v2-text-text-muted">Speculative Branches:</span>
+                          <input
+                            type="range"
+                            min="1"
+                            max="5"
+                            value={dwimBranches()}
+                            onInput={(e) => setDwimBranches(parseInt(e.currentTarget.value, 10))}
+                            class="w-24 accent-[#1c78e3] cursor-pointer"
+                          />
+                          <span class="font-mono font-bold text-blue-500 dark:text-blue-400 bg-blue-500/10 px-1.5 py-0.5 rounded text-[11px]">
+                            {dwimBranches()}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </Show>
                   <div
                     class="relative min-h-[52px]"
                     onMouseDown={(e) => {
@@ -1741,7 +1816,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                         onKeyDown={handleKeyDown}
                         classList={{
                           "select-text": true,
-                          "min-h-[52px] w-full px-4 pt-4 pb-2 focus:outline-none whitespace-pre-wrap leading-5 text-[13px] font-[440] text-v2-text-text-faint [font-family:Inter,var(--font-family-sans)]": true,
+                          "min-h-[52px] w-full px-4 pt-4 pb-2 focus:outline-none whitespace-pre-wrap leading-5 text-[13px] font-[440] text-v2-text-text-base [font-family:Inter,var(--font-family-sans)]": true,
                           "[&_[data-type=file]]:text-syntax-property": true,
                           "[&_[data-type=agent]]:text-syntax-type": true,
                           "font-mono!": store.mode === "shell",
@@ -1810,13 +1885,19 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                         class="size-8 rounded-full bg-[#1c78e3] hover:bg-[#155cb0] text-white flex items-center justify-center transition-all border-none outline-none cursor-pointer disabled:opacity-40 disabled:cursor-default shrink-0"
                         aria-label={stopping() ? language.t("prompt.action.stop") : language.t("prompt.action.send")}
                       >
-                        <Show when={stopping()} fallback={
+                        <Show when={working()} fallback={
                           <svg class="size-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
                             <line x1="5" y1="12" x2="19" y2="12" />
                             <polyline points="12 5 19 12 12 19" />
                           </svg>
                         }>
-                          <div class="size-3 bg-white rounded-sm" />
+                          <div class="relative flex items-center justify-center size-full">
+                            <svg class="animate-spin size-6 text-white absolute" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3"></circle>
+                              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            <div class="size-2 bg-white rounded-sm z-10" />
+                          </div>
                         </Show>
                       </button>
                     </Tooltip>
@@ -1938,6 +2019,54 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                     onRemove={removeAttachment}
                     removeLabel={language.t("prompt.attachment.remove")}
                   />
+                  <Show when={hasDwimKeywords()}>
+                    <div class="mx-4 my-2 p-3.5 rounded-xl border border-blue-500/30 bg-blue-500/5 dark:bg-blue-950/20 backdrop-blur-md flex flex-col gap-2.5 transition-all duration-300 shadow-[0_4px_16px_rgba(28,120,227,0.1)]">
+                      <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2 font-semibold text-[12.5px] text-blue-500 dark:text-blue-400">
+                          <svg class="size-4 animate-pulse" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="4" y1="21" x2="4" y2="14" />
+                            <line x1="4" y1="10" x2="4" y2="3" />
+                            <line x1="12" y1="21" x2="12" y2="12" />
+                            <line x1="12" y1="8" x2="12" y2="3" />
+                            <line x1="20" y1="21" x2="20" y2="16" />
+                            <line x1="20" y1="12" x2="20" y2="3" />
+                            <line x1="1" y1="14" x2="7" y2="14" />
+                            <line x1="9" y1="8" x2="15" y2="8" />
+                            <line x1="17" y1="16" x2="23" y2="16" />
+                          </svg>
+                          <span>🤖 DWIM Parameter Tuning Activated</span>
+                        </div>
+                        <span class="text-[10px] text-v2-text-text-faint font-mono tracking-wide uppercase px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-500 dark:text-blue-400">
+                          Conversational overrides
+                        </span>
+                      </div>
+                      <div class="flex flex-wrap gap-5 items-center mt-1">
+                        <label class="flex items-center gap-2 text-[12px] text-v2-text-text-base cursor-pointer select-none">
+                          <input
+                            type="checkbox"
+                            checked={dwimObfuscate()}
+                            onChange={(e) => setDwimObfuscate(e.currentTarget.checked)}
+                            class="rounded border-[#333] bg-v2-background-bg-hover text-blue-500 focus:ring-0 cursor-pointer"
+                          />
+                          <span class="font-medium">Obfuscate Code (Blindfold)</span>
+                        </label>
+                        <div class="flex items-center gap-3 text-[12px] text-v2-text-text-base select-none">
+                          <span class="font-medium text-v2-text-text-muted">Speculative Branches:</span>
+                          <input
+                            type="range"
+                            min="1"
+                            max="5"
+                            value={dwimBranches()}
+                            onInput={(e) => setDwimBranches(parseInt(e.currentTarget.value, 10))}
+                            class="w-24 accent-[#1c78e3] cursor-pointer"
+                          />
+                          <span class="font-mono font-bold text-blue-500 dark:text-blue-400 bg-blue-500/10 px-1.5 py-0.5 rounded text-[11px]">
+                            {dwimBranches()}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </Show>
                   <div
                     class="relative"
                     onMouseDown={(e) => {
@@ -2020,16 +2149,26 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
 
                       <div class="flex items-center gap-1 pointer-events-auto">
                         <Tooltip placement="top" inactive={!working() && blank()} value={tip()}>
-                          <IconButton
+                          <button
                             data-action="prompt-submit"
                             type="submit"
                             disabled={!working() && blank()}
                             tabIndex={store.mode === "normal" ? undefined : -1}
-                            icon={stopping() ? "stop" : store.mode === "shell" ? "arrow-undo-down" : "arrow-up"}
-                            variant="primary"
-                            class="size-8"
+                            class="size-8 rounded-full bg-[#1c78e3] hover:bg-[#155cb0] text-white flex items-center justify-center transition-all border-none outline-none cursor-pointer disabled:opacity-40 disabled:cursor-default shrink-0 relative"
                             aria-label={stopping() ? language.t("prompt.action.stop") : language.t("prompt.action.send")}
-                          />
+                          >
+                            <Show when={working()} fallback={
+                              <Icon name={store.mode === "shell" ? "arrow-undo-down" : "arrow-up"} size="small" />
+                            }>
+                              <div class="relative flex items-center justify-center size-full">
+                                <svg class="animate-spin size-6 text-white absolute" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3"></circle>
+                                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                <div class="size-2 bg-white rounded-sm z-10" />
+                              </div>
+                            </Show>
+                          </button>
                         </Tooltip>
                       </div>
                     </div>

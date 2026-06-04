@@ -528,7 +528,7 @@ function Option(props: {
     <>
       <Show when={props.current}>
         <text flexShrink={0} fg={props.active ? fg : props.current ? theme.primary : theme.text} marginRight={0}>
-          ●
+          ◈
         </text>
       </Show>
       <Show when={!props.current && props.gutter}>

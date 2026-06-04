@@ -83,12 +83,12 @@ export const DialogGrillMe: Component = () => {
 
     const dir = base64Encode(sdk.directory)
     dialog.close()
-    prompt.set(parts, undefined, { dir })
+    prompt.set([{ type: "text", content: parts, start: 0, end: parts.length }], undefined, { dir })
     navigate(`/${dir}/session`)
   }
 
   return (
-    <Dialog title="/grill-me — Interactive Design Interview" size="medium">
+    <Dialog title="/grill-me — Interactive Design Interview" size="normal">
       <div class="flex flex-col gap-6 p-4">
         <div class="flex items-center gap-2 mb-2">
           <Show when={step() > 0}>

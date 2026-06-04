@@ -83,7 +83,18 @@ export const WriteTool = Tool.define(
             const output = `Kode Gate blocked this write:\n\n${verification.failureDetails}\n\nPlease fix the issues and try again.`
             return {
               title: `🛑 ${path.relative(instance.worktree, filepath)}`,
-              metadata: { filepath, exists, verdict: verification.result },
+              metadata: {
+                filepath,
+                exists,
+                verdict: verification.result,
+                gate: {
+                  approved: false,
+                  skipped: verification.skipped,
+                  reason: verification.failureDetails,
+                  badge: undefined as string | undefined,
+                },
+                diagnostics: {},
+              },
               output,
             }
           }
@@ -112,6 +123,13 @@ export const WriteTool = Tool.define(
               diagnostics,
               filepath,
               exists: exists,
+              verdict: verification.result,
+              gate: {
+                approved: true,
+                skipped: verification.skipped,
+                reason: undefined as string | undefined,
+                badge: verification.badge,
+              },
             },
             output,
           }

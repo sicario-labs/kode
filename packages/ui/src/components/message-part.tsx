@@ -404,6 +404,18 @@ export function getToolInfo(
         subtitle: input.description,
       }
     }
+    case "invoke_subagent": {
+      const subagents = Array.isArray(input.Subagents) ? input.Subagents : []
+      const first = subagents[0]
+      const type = first?.TypeName ? first.TypeName[0]!.toUpperCase() + first.TypeName.slice(1) : undefined
+      const count = subagents.length
+      const subtitle = count > 1 ? `${count} subagents` : first?.Role || first?.Prompt
+      return {
+        icon: "task",
+        title: agentTitle(i18n, type),
+        subtitle: subtitle,
+      }
+    }
     case "bash":
       return {
         icon: "console",
@@ -1499,6 +1511,136 @@ PART_MAPPING["text"] = function TextPartDisplay(props) {
     () => props.message.role === "assistant" && typeof (props.message as AssistantMessage).time.completed !== "number",
   )
   const text = () => readPartText(data.store.part_text_accum_delta, part())
+
+  const extractedTools = createMemo(() => {
+    const raw = text()
+    if (!raw) return null
+
+    const parts: any[] = []
+    let i = 0
+
+    while (i < raw.length) {
+      const nextBrace = raw.indexOf("{", i)
+      if (nextBrace === -1) break
+
+      let depth = 0
+      let j = nextBrace
+      let inString = false
+      let escape = false
+      let foundEnd = false
+
+      for (; j < raw.length; j++) {
+        const ch = raw[j]
+        if (escape) {
+          escape = false
+          continue
+        }
+        if (ch === "\\") {
+          escape = true
+          continue
+        }
+        if (ch === '"') {
+          inString = !inString
+          continue
+        }
+        if (inString) continue
+        if (ch === "{") depth++
+        else if (ch === "}") {
+          depth--
+          if (depth === 0) {
+            foundEnd = true
+            break
+          }
+        }
+      }
+
+      if (!foundEnd || depth !== 0) {
+        i = nextBrace + 1
+        continue
+      }
+
+      const blob = raw.slice(nextBrace, j + 1)
+      let parsed = null
+      try {
+        parsed = JSON.parse(blob)
+      } catch (e) {
+        try {
+          const fixed = blob.replace(/\\(?!["\\/bfnrt]|u[0-9a-fA-F]{4})/g, "\\\\")
+          parsed = JSON.parse(fixed)
+        } catch (e2) {
+          i = nextBrace + 1
+          continue
+        }
+      }
+
+      if (parsed && typeof parsed === "object") {
+        let toolName = ""
+        if ("Subagents" in parsed) toolName = "invoke_subagent"
+        else if ("subagent_type" in parsed || "task_id" in parsed) toolName = "task"
+        else if ("filePath" in parsed || "absolutePath" in parsed) {
+          if ("content" in parsed) {
+            toolName = "write"
+          } else if ("oldString" in parsed || "newString" in parsed) {
+            toolName = "edit"
+          } else {
+            toolName = "read"
+          }
+        }
+        else if ("command" in parsed || "commandLine" in parsed || "CommandLine" in parsed) toolName = "bash"
+        else if ("pattern" in parsed || "path" in parsed) toolName = "glob"
+        else if ("todos" in parsed) toolName = "todowrite"
+        else if ("url" in parsed) toolName = "websearch"
+        else if ("query" in parsed) toolName = "grep"
+
+        if (toolName) {
+          parts.push({
+            type: "tool",
+            name: toolName,
+            input: parsed,
+            content: blob,
+            startIndex: nextBrace,
+            endIndex: j + 1
+          })
+          i = j + 1
+          continue
+        }
+      }
+
+      i = nextBrace + 1
+    }
+
+    return parts.length > 0 ? parts : null
+  })
+
+  const cleanedText = createMemo(() => {
+    let raw = text()
+    if (!raw) return ""
+    const tools = extractedTools()
+    if (!tools) return raw
+
+    const sortedTools = [...tools].sort((a, b) => b.startIndex - a.startIndex)
+    let cleaned = raw
+    for (const t of sortedTools) {
+      let start = t.startIndex
+      let end = t.endIndex
+
+      const before = cleaned.slice(0, start)
+      const after = cleaned.slice(end)
+
+      const blockBeforeMatch = before.match(/```(?:json)?\s*$/i)
+      const blockAfterMatch = after.match(/^\s*```/)
+
+      if (blockBeforeMatch && blockAfterMatch) {
+        start = start - blockBeforeMatch[0].length
+        end = end + blockAfterMatch[0].length
+      }
+
+      cleaned = cleaned.slice(0, start) + cleaned.slice(end)
+    }
+
+    return cleaned.trim()
+  })
+
   const isLastTextPart = createMemo(() => {
     const last = (data.store.part?.[props.message.id] ?? [])
       .filter((item): item is TextPart => item?.type === "text" && !!item.text?.trim())
@@ -1533,21 +1675,38 @@ PART_MAPPING["text"] = function TextPartDisplay(props) {
   return (
     <Show when={text()}>
       <div data-component="text-part" data-timeline-part-id={part().id}>
-        <div data-slot="text-part-body">
-          <Show when={ephemeralContent()} fallback={
-            <Show when={streaming()} fallback={<Markdown text={text()} cacheKey={part().id} streaming={false} />}>
-              <PacedMarkdown text={text()} cacheKey={part().id} streaming={streaming()} />
-            </Show>
-          }>
-            <div
-              style="padding: 12px 16px; border: 1px solid rgba(0, 255, 65, 0.3); border-radius: 8px; background: rgba(0, 255, 65, 0.05); box-shadow: 0 0 10px rgba(0, 255, 65, 0.05);"
-            >
-              <div style="font-size: 11px; text-transform: uppercase; font-weight: 600; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; letter-spacing: 0.05em; color: #00ff41;">
-                <Icon name="bell" size="small" />
-                SYSTEM NOTIFICATION (EPHEMERAL)
+        <div data-slot="text-part-body" class="flex flex-col gap-3">
+          <Show when={cleanedText()}>
+            <Show when={ephemeralContent()} fallback={
+              <Show when={streaming()} fallback={<Markdown text={cleanedText()} cacheKey={part().id} streaming={false} />}>
+                <PacedMarkdown text={cleanedText()} cacheKey={part().id} streaming={streaming()} />
+              </Show>
+            }>
+              <div
+                style="padding: 12px 16px; border: 1px solid rgba(0, 255, 65, 0.3); border-radius: 8px; background: rgba(0, 255, 65, 0.05); box-shadow: 0 0 10px rgba(0, 255, 65, 0.05);"
+              >
+                <div style="font-size: 11px; text-transform: uppercase; font-weight: 600; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; letter-spacing: 0.05em; color: #00ff41;">
+                  <Icon name="warning" size="small" />
+                  SYSTEM NOTIFICATION (EPHEMERAL)
+                </div>
+                <Markdown text={ephemeralContent()!} cacheKey={part().id + '-ephemeral'} streaming={false} />
               </div>
-              <Markdown text={ephemeralContent()!} cacheKey={part().id + '-ephemeral'} streaming={false} />
-            </div>
+            </Show>
+          </Show>
+          <Show when={extractedTools()}>
+            <For each={extractedTools()}>
+              {(p) => (
+                <div class="my-2">
+                  <Dynamic
+                    component={getTool(p.name)}
+                    tool={p.name}
+                    input={p.input}
+                    metadata={{}}
+                    status={streaming() ? "running" : "done"}
+                  />
+                </div>
+              )}
+            </For>
           </Show>
         </div>
         <Show when={showCopy()}>
@@ -1864,6 +2023,102 @@ ToolRegistry.register({
         clickable={clickable()}
         onTriggerClick={navigate}
       />
+    )
+  },
+})
+
+ToolRegistry.register({
+  name: "invoke_subagent",
+  render(props) {
+    const data = useData()
+    const i18n = useI18n()
+    const location = useLocation()
+    const subagents = createMemo(() => {
+      const list = props.input.Subagents
+      return Array.isArray(list) ? list : []
+    })
+
+    return (
+      <For each={subagents()}>
+        {(subagent: any) => {
+          const childSessionId = createMemo(() => {
+            const description = typeof subagent.Prompt === "string" ? subagent.Prompt : ""
+            const agentName = taskAgent(subagent.TypeName, data.store.agent).name
+            const parentID = currentSession(location.pathname)
+            if (!parentID) return undefined
+
+            return (data.store.session ?? [])
+              .filter((session) => session.parentID === parentID && !session.time?.archived)
+              .filter((session) => (description ? session.title.startsWith(description) : true))
+              .filter((session) => (agentName ? session.title.includes(`@${agentName}`) : true))
+              .sort((a, b) => (b.time.created ?? 0) - (a.time.created ?? 0))[0]?.id
+          })
+
+          const agent = createMemo(() => taskAgent(subagent.TypeName, data.store.agent))
+          const title = createMemo(() => agent().name ?? i18n.t("ui.tool.agent.default"))
+          const tone = createMemo(() => agent().color)
+          const subtitle = createMemo(() => subagent.Role || subagent.Prompt || childSessionId())
+          const running = createMemo(() => props.status === "pending" || props.status === "running")
+
+          const href = createMemo(() => sessionLink(childSessionId(), location.pathname, data.sessionHref))
+          const clickable = createMemo(() => !!(childSessionId() && (data.navigateToSession || href())))
+
+          const open = () => {
+            const id = childSessionId()
+            if (!id) return
+            if (data.navigateToSession) {
+              data.navigateToSession(id)
+              return
+            }
+            const value = href()
+            if (value) window.location.assign(value)
+          }
+
+          const navigate = (event: MouseEvent) => {
+            if (!data.navigateToSession) return
+            if (event.button !== 0 || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return
+            event.preventDefault()
+            open()
+          }
+
+          const trigger = () => (
+            <div data-component="task-tool-card">
+              <div data-slot="basic-tool-tool-info-structured">
+                <div data-slot="basic-tool-tool-info-main">
+                  <Show when={running()}>
+                    <span data-component="task-tool-spinner" style={{ color: tone() ?? "var(--icon-interactive-base)" }}>
+                      <Spinner />
+                    </span>
+                  </Show>
+                  <span data-component="task-tool-title" style={{ color: tone() ?? "var(--text-strong)" }}>
+                    {title()}
+                  </span>
+                  <Show when={subtitle()}>
+                    <span data-slot="basic-tool-tool-subtitle">{subtitle()}</span>
+                  </Show>
+                </div>
+              </div>
+              <Show when={clickable()}>
+                <div data-component="task-tool-action">
+                  <Icon name="square-arrow-top-right" size="small" />
+                </div>
+              </Show>
+            </div>
+          )
+
+          return (
+            <BasicTool
+              icon="task"
+              status={props.status}
+              trigger={trigger()}
+              hideDetails
+              triggerHref={href()}
+              clickable={clickable()}
+              onTriggerClick={navigate}
+            />
+          )
+        }}
+      </For>
     )
   },
 })

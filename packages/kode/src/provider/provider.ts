@@ -168,6 +168,7 @@ function custom(dep: CustomDep): Record<string, CustomLoader> {
     kode: Effect.fnUntraced(function* (input: Info) {
       const env = yield* dep.env()
       const hasKey = iife(() => {
+        if (env["KODE_PRO_API_KEY"] || env["KODE_LLM_API_KEY"] || env["KODE_API_KEY"]) return true
         if (input.env.some((item) => env[item])) return true
         return false
       })
@@ -1350,14 +1351,12 @@ export const layer = Layer.effect(
         function mergeProvider(providerID: ProviderID, provider: Partial<Info>) {
           const existing = providers[providerID]
           if (existing) {
-            // @ts-expect-error
-            providers[providerID] = mergeDeep(existing, provider)
+            providers[providerID] = mergeDeep(existing, provider) as Info
             return
           }
           const match = database[providerID]
           if (!match) return
-          // @ts-expect-error
-          providers[providerID] = mergeDeep(match, provider)
+          providers[providerID] = mergeDeep(match, provider) as Info
         }
 
         // load plugins first so config() hook runs before reading cfg.provider

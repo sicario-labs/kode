@@ -4,7 +4,7 @@ import * as Log from "@kode/core/util/log"
 import { Context, Effect, Layer } from "effect"
 import * as Stream from "effect/Stream"
 import { streamText, wrapLanguageModel, type ModelMessage, type Tool } from "ai"
-import type { LLMEvent } from "@kode/llm"
+import { LLMEvent } from "@kode/llm"
 import { LLMClient, RequestExecutor, WebSocketExecutor } from "@kode/llm/route"
 import type { LLMClientService } from "@kode/llm/route"
 import { GitLabWorkflowLanguageModel } from "gitlab-ai-provider"
@@ -395,16 +395,35 @@ const live: Layer.Layer<
 
             const result = yield* run({ ...input, abort: ctrl.signal })
 
-            if (result.type === "native") return result.stream
-
-            // Adapter seam: both runtimes expose the same LLMEvent stream. Native
-            // already returns one; AI SDK streams are converted here.
             const state = LLMAISDK.adapterState()
-            return Stream.fromAsyncIterable(result.result.fullStream, (e) =>
+            const eventStream = result.type === "native" ? result.stream : Stream.fromAsyncIterable(result.result.fullStream, (e) =>
               e instanceof Error ? e : new Error(String(e)),
             ).pipe(
               Stream.mapEffect((event) => LLMAISDK.toLLMEvents(state, event)),
               Stream.flatMap((events) => Stream.fromIterable(events)),
+            )
+
+            const accumState = { text: "" }
+            return eventStream.pipe(
+              Stream.map((event): LLMEvent[] => {
+                if (event.type === "text-delta") {
+                  accumState.text += event.text
+                }
+                if (event.type === "finish") {
+                  const tools = extractTools(accumState.text)
+                  const toolCalls = tools.map((t) =>
+                    LLMEvent.toolCall({
+                      id: "call_" + Math.random().toString(36).slice(2, 11),
+                      name: t.name,
+                      input: t.input,
+                    })
+                  )
+                  accumState.text = ""
+                  return [...toolCalls, event]
+                }
+                return [event]
+              }),
+              Stream.flatMap((events) => Stream.fromIterable(events))
             )
           }),
         ),
@@ -413,6 +432,88 @@ const live: Layer.Layer<
     return Service.of({ stream })
   }),
 )
+
+function extractTools(raw: string) {
+  const parts: any[] = []
+  let i = 0
+  while (i < raw.length) {
+    const nextBrace = raw.indexOf("{", i)
+    if (nextBrace === -1) break
+    let depth = 0
+    let j = nextBrace
+    let inString = false
+    let escape = false
+    let foundEnd = false
+    for (; j < raw.length; j++) {
+      const ch = raw[j]
+      if (escape) {
+        escape = false
+        continue
+      }
+      if (ch === "\\") {
+        escape = true
+        continue
+      }
+      if (ch === '"') {
+        inString = !inString
+        continue
+      }
+      if (inString) continue
+      if (ch === "{") depth++
+      else if (ch === "}") {
+        depth--
+        if (depth === 0) {
+          foundEnd = true
+          break
+        }
+      }
+    }
+    if (!foundEnd || depth !== 0) {
+      i = nextBrace + 1
+      continue
+    }
+    const blob = raw.slice(nextBrace, j + 1)
+    let parsed = null
+    try {
+      parsed = JSON.parse(blob)
+    } catch (e) {
+      try {
+        const fixed = blob.replace(/\\(?!["\\/bfnrt]|u[0-9a-fA-F]{4})/g, "\\\\")
+        parsed = JSON.parse(fixed)
+      } catch (e2) {
+        i = nextBrace + 1
+        continue
+      }
+    }
+    if (parsed && typeof parsed === "object") {
+      let toolName = ""
+      if ("Subagents" in parsed) toolName = "invoke_subagent"
+      else if ("subagent_type" in parsed || "task_id" in parsed) toolName = "task"
+      else if ("filePath" in parsed || "absolutePath" in parsed) {
+        if ("content" in parsed) {
+          toolName = "write"
+        } else if ("oldString" in parsed || "newString" in parsed) {
+          toolName = "edit"
+        } else {
+          toolName = "read"
+        }
+      }
+      else if ("command" in parsed || "commandLine" in parsed || "CommandLine" in parsed) toolName = "bash"
+      else if ("pattern" in parsed || "path" in parsed) toolName = "glob"
+      else if ("todos" in parsed) toolName = "todowrite"
+      else if ("url" in parsed) toolName = "websearch"
+      else if ("query" in parsed) toolName = "grep"
+
+      if (toolName) {
+        parts.push({ name: toolName, input: parsed, content: blob, startIndex: nextBrace, endIndex: j + 1 })
+        i = j + 1
+        continue
+      }
+    }
+    i = nextBrace + 1
+  }
+  return parts
+}
 
 export const layer = live.pipe(Layer.provide(Permission.defaultLayer))
 

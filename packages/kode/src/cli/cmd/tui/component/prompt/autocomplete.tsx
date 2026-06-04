@@ -859,7 +859,7 @@ export function Autocomplete(props: {
               onMouseUp={() => select()}
             >
               <text fg={index === store.selected ? selectedForeground(theme) : theme.text} flexShrink={0}>
-                {option().display}
+                {option().display.trim().startsWith("/") ? "◈ " + option().display : option().display.trim().startsWith("@") ? "✦ " + option().display : option().display}
               </text>
               <Show when={option().description}>
                 <text fg={index === store.selected ? selectedForeground(theme) : theme.textMuted} wrapMode="none">

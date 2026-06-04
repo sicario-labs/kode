@@ -171,9 +171,9 @@ export const createDirSyncContext = (client: KodeClient, directory: string) => {
   type Setter = Child[1]
 
   const current = createMemo(() => globalSync.child(directory))
-  const target = (directory?: string) => {
-    if (!directory || directory === directory) return current()
-    return globalSync.child(directory)
+  const target = (dir?: string) => {
+    if (!dir || dir === directory) return current()
+    return globalSync.child(dir)
   }
   const absolute = (path: string) => (current()[0].path.directory + "/" + path).replace("//", "/")
   const initialMessagePageSize = 80

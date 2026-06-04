@@ -428,7 +428,7 @@ function AssistantReasoning(props: {
         </Match>
         <Match when={true}>
           <box paddingLeft={3} marginTop={1} flexShrink={0} onMouseUp={toggle}>
-            <Spinner color={theme.textMuted}>{title() ? "Thinking: " + title() : "Thinking"}</Spinner>
+            <Spinner context="thinking" color={theme.textMuted}>{title() ? "Thinking: " + title() : "Thinking"}</Spinner>
           </box>
         </Match>
       </Switch>
@@ -441,7 +441,7 @@ function CollapsedReasoningText(props: { title: string | null }) {
 
   return (
     <text fg={theme.warning} wrapMode="none">
-      <span style={{ fg: theme.warning, italic: true }}>{props.title ? "+ Thought: " + props.title : "+ Thought"}</span>
+      <span style={{ fg: theme.warning, italic: true }}>{props.title ? "✦ Thinking: " + props.title : "✦ Thinking"}</span>
     </text>
   )
 }
@@ -533,7 +533,7 @@ function GenericTool(props: ToolProps) {
     <Show
       when={output()}
       fallback={
-        <InlineTool icon="⚙" pending="Writing command..." complete={toolComplete(props.part)} part={props.part}>
+        <InlineTool icon="✦" pending="Writing command..." complete={toolComplete(props.part)} part={props.part}>
           {props.part.name} {input(props.input)}
         </InlineTool>
       }
@@ -615,7 +615,7 @@ function InlineTool(props: {
       <box flexShrink={0}>
         <Switch>
           <Match when={props.spinner}>
-            <Spinner color={theme.text} />
+            <Spinner context="executing" color={theme.text} />
           </Match>
           <Match when={complete()}>
             <text fg={fg()} attributes={attributes()}>
@@ -692,7 +692,7 @@ function BlockTool(props: {
           </text>
         }
       >
-        <Spinner color={theme.textMuted}>{props.title.replace(/^# /, "")}</Spinner>
+        <Spinner context="executing" color={theme.textMuted}>{props.title.replace(/^# /, "")}</Spinner>
       </Show>
       {props.children}
       <Show when={error()}>

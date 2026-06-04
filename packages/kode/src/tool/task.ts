@@ -17,10 +17,10 @@ import { EffectBridge } from "@/effect/bridge"
 import { RuntimeFlags } from "@/effect/runtime-flags"
 
 export interface TaskPromptOps {
-  cancel(sessionID: SessionID): Effect.Effect<void>
-  resolvePromptParts(template: string): Effect.Effect<SessionPrompt.PromptInput["parts"]>
-  prompt(input: SessionPrompt.PromptInput): Effect.Effect<MessageV2.WithParts>
-  loop(input: SessionPrompt.LoopInput): Effect.Effect<MessageV2.WithParts>
+  cancel(sessionID: SessionID): Effect.Effect<void, any, never>
+  resolvePromptParts(template: string): Effect.Effect<SessionPrompt.PromptInput["parts"], any, never>
+  prompt(input: SessionPrompt.PromptInput): Effect.Effect<MessageV2.WithParts, any, never>
+  loop(input: SessionPrompt.LoopInput): Effect.Effect<MessageV2.WithParts, any, never>
 }
 
 const id = "task"
@@ -206,7 +206,7 @@ export const TaskTool = Tool.define(
         return result.parts.findLast((item) => item.type === "text")?.text ?? ""
       })
 
-      const resumeWhenIdle: (input: { userID: MessageID; state: "completed" | "error" }) => Effect.Effect<void> =
+      const resumeWhenIdle: (input: { userID: MessageID; state: "completed" | "error" }) => Effect.Effect<void, any, any> =
         Effect.fn("TaskTool.resumeWhenIdle")(function* (input: { userID: MessageID; state: "completed" | "error" }) {
           const latest = yield* sessions
             .findMessage(ctx.sessionID, (item) => item.info.role === "user")
@@ -284,7 +284,7 @@ export const TaskTool = Tool.define(
                 : inject("error", errorText(Cause.squash(cause))).pipe(Effect.ignore)
               ).pipe(Effect.andThen(Effect.failCause(cause))),
             ),
-          ),
+          ) as any,
         })
 
         return {
@@ -334,7 +334,7 @@ export const TaskTool = Tool.define(
       parameters: Parameters,
       jsonSchema: undefined,
       execute: (params: Schema.Schema.Type<typeof Parameters>, ctx: Tool.Context) =>
-        run(params, ctx).pipe(Effect.orDie),
+        run(params, ctx),
     }
   }),
 )

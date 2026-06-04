@@ -143,7 +143,11 @@ export const layer = Layer.effect(
       yield* sessions.clearRevert(sessionID)
     })
 
-    return Service.of({ revert, unrevert, cleanup })
+    return Service.of({
+      revert: revert as any,
+      unrevert: unrevert as any,
+      cleanup: cleanup as any,
+    })
   }),
 )
 

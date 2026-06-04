@@ -92,4 +92,10 @@ export type ElectronAPI = {
   setBackgroundColor: (color: string) => Promise<void>
   exportDebugLogs: () => Promise<string>
   recordFatalRendererError: (error: FatalRendererError) => Promise<void>
+  verifyFiles: (files: Array<{ path: string; content: string }>) => Promise<VerifyResult>
+}
+
+export interface VerifyResult {
+  status: "PASS" | "FAIL"
+  failed_files: Record<string, string>
 }

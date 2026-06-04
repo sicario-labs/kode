@@ -137,7 +137,7 @@ export const WebSearchTool = Tool.define(
             title: `${title}: ${params.query}`,
             metadata: { provider },
           }
-        }).pipe(Effect.orDie),
+        }),
     }
   }),
 )

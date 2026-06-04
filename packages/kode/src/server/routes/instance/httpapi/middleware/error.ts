@@ -17,8 +17,18 @@ export const errorLayer = HttpRouter.middleware<{ handles: unknown }>()((effect)
       })
       if (!defect) return Effect.failCause(cause)
 
-      const error = defect.defect
+      const error = defect.defect as any
       const ref = `err_${crypto.randomUUID().slice(0, 8)}`
+
+      console.error("=== GLOBAL ERROR DEFECT REF:", ref, "===", {
+        error,
+        name: error?.name,
+        tag: error?._tag,
+        message: error?.message,
+        path: error?.path,
+        issues: error?.issues,
+        cause: String(cause)
+      })
 
       log.error("failed", { ref, error, cause: Cause.pretty(cause) })
 

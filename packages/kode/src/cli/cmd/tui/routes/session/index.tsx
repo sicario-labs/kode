@@ -76,6 +76,7 @@ import { useExit } from "../../context/exit"
 import { Filesystem } from "@/util/filesystem"
 import { PermissionPrompt } from "./permission"
 import { QuestionPrompt } from "./question"
+import { StageBar, GateResult, GatedFrame, StatusCard, type KodeStage, classifyIntent, INTENT_STAGES, type Intent } from "../../component/kode-ui"
 import { DialogExportOptions } from "../../ui/dialog-export-options"
 import * as Model from "../../util/model"
 import { formatTranscript } from "../../util/transcript"
@@ -208,6 +209,45 @@ export function Session() {
   const pending = createMemo(() => {
     return messages().findLast((x) => x.role === "assistant" && !x.time.completed)?.id
   })
+
+  const currentStage = createMemo<KodeStage | undefined>(() => {
+    if (!pending()) return undefined
+    const last = messages().findLast((x) => x.id === pending())
+    if (!last || last.role !== "assistant") return undefined
+    const parts = sync.data.part[last.id] ?? []
+    const hasReasoning = parts.some((p) => p.type === "reasoning")
+    const hasTool = parts.some((p) => p.type === "tool")
+    const lastTool = parts.findLast((p) => p.type === "tool")
+    if (lastTool && lastTool.type === "tool" && lastTool.tool === "todowrite") return "plan"
+    if (hasReasoning && !hasTool) return "plan"
+    if (lastTool && lastTool.type === "tool" && lastTool.state.status === "running") {
+      const readOnlyTools = new Set(["bash", "webfetch", "websearch", "read", "glob", "grep"])
+      return readOnlyTools.has(lastTool.tool) ? "plan" : "generate"
+    }
+    if (hasTool) return "verify"
+    return "plan"
+  })
+
+  const lastUserText = createMemo(() => {
+    const lastUser = messages().findLast((m) => m.role === "user")
+    if (!lastUser) return ""
+    const textPart = (sync.data.part[lastUser.id] ?? []).find((p) => p.type === "text")
+    return textPart && textPart.type === "text" ? textPart.text : ""
+  })
+
+  const sessionHasTools = createMemo(() => {
+    return messages().some((m) => (sync.data.part[m.id] ?? []).some((p) => p.type === "tool"))
+  })
+
+  const intent = createMemo<Intent>(() => classifyIntent(lastUserText()))
+
+  const effectiveIntent = createMemo<Intent>(() => {
+    if (currentStage()) return "code-task"
+    if (sessionHasTools()) return "code-task"
+    return intent()
+  })
+
+  const effectiveStages = createMemo<KodeStage[]>(() => INTENT_STAGES[effectiveIntent()])
 
   const lastAssistant = createMemo(() => {
     return messages().findLast((x) => x.role === "assistant")
@@ -1088,6 +1128,7 @@ export function Session() {
       >
         <box flexDirection="row" flexGrow={1} minHeight={0}>
           <box flexGrow={1} minHeight={0} paddingBottom={1} paddingLeft={2} paddingRight={2} gap={1}>
+            <StageBar stages={effectiveStages()} current={currentStage()} />
             <Show when={session()}>
               <scrollbox
                 ref={(r) => (scroll = r)}
@@ -1535,7 +1576,7 @@ function ReasoningPart(props: { last: boolean; part: ReasoningPart; message: Ass
         </Match>
         <Match when={true}>
           <box id={"text-" + props.part.id} paddingLeft={3} marginTop={1} flexShrink={0} onMouseUp={toggle}>
-            <Spinner color={theme.textMuted}>{title() ? "Thinking: " + title() : "Thinking"}</Spinner>
+            <Spinner context="thinking" color={theme.textMuted}>{title() ? "Thinking: " + title() : "Thinking"}</Spinner>
           </box>
         </Match>
       </Switch>
@@ -1550,23 +1591,134 @@ function CollapsedReasoningText(props: { title: string | null; duration: number 
   return (
     <text fg={theme.warning} wrapMode="none">
       <span style={{ fg: theme.warning }}>
-        {props.title ? "+ Thought: " + props.title + " · " + duration() : "+ Thought: " + duration()}
+        {props.title ? "✦ Thinking: " + props.title + " · " + duration() : "✦ Thinking: " + duration()}
       </span>
     </text>
   )
 }
 
+function extractToolsTui(raw: string) {
+  const parts: any[] = []
+  let i = 0
+  while (i < raw.length) {
+    const nextBrace = raw.indexOf("{", i)
+    if (nextBrace === -1) break
+    let depth = 0
+    let j = nextBrace
+    let inString = false
+    let escape = false
+    let foundEnd = false
+    for (; j < raw.length; j++) {
+      const ch = raw[j]
+      if (escape) {
+        escape = false
+        continue
+      }
+      if (ch === "\\") {
+        escape = true
+        continue
+      }
+      if (ch === '"') {
+        inString = !inString
+        continue
+      }
+      if (inString) continue
+      if (ch === "{") depth++
+      else if (ch === "}") {
+        depth--
+        if (depth === 0) {
+          foundEnd = true
+          break
+        }
+      }
+    }
+    if (!foundEnd || depth !== 0) {
+      i = nextBrace + 1
+      continue
+    }
+    const blob = raw.slice(nextBrace, j + 1)
+    let parsed = null
+    try {
+      parsed = JSON.parse(blob)
+    } catch (e) {
+      try {
+        const fixed = blob.replace(/\\(?!["\\/bfnrt]|u[0-9a-fA-F]{4})/g, "\\\\")
+        parsed = JSON.parse(fixed)
+      } catch (e2) {
+        i = nextBrace + 1
+        continue
+      }
+    }
+    if (parsed && typeof parsed === "object") {
+      let toolName = ""
+      if ("Subagents" in parsed) toolName = "invoke_subagent"
+      else if ("subagent_type" in parsed || "task_id" in parsed) toolName = "task"
+      else if ("filePath" in parsed || "absolutePath" in parsed) {
+        if ("content" in parsed) {
+          toolName = "write"
+        } else if ("oldString" in parsed || "newString" in parsed) {
+          toolName = "edit"
+        } else {
+          toolName = "read"
+        }
+      }
+      else if ("command" in parsed || "commandLine" in parsed || "CommandLine" in parsed) toolName = "bash"
+      else if ("pattern" in parsed || "path" in parsed) toolName = "glob"
+      else if ("todos" in parsed) toolName = "todowrite"
+      else if ("url" in parsed) toolName = "websearch"
+      else if ("query" in parsed) toolName = "grep"
+
+      if (toolName) {
+        parts.push({ name: toolName, startIndex: nextBrace, endIndex: j + 1 })
+        i = j + 1
+        continue
+      }
+    }
+    i = nextBrace + 1
+  }
+  return parts
+}
+
 function TextPart(props: { last: boolean; part: TextPart; message: AssistantMessage }) {
   const ctx = use()
   const { theme, syntax } = useTheme()
+
+  const cleaned = createMemo(() => {
+    const raw = props.part.text
+    if (!raw) return ""
+    const tools = extractToolsTui(raw)
+    if (tools.length === 0) return raw.trim()
+
+    const sortedTools = [...tools].sort((a, b) => b.startIndex - a.startIndex)
+    let cleaned = raw
+    for (const t of sortedTools) {
+      let start = t.startIndex
+      let end = t.endIndex
+
+      const before = cleaned.slice(0, start)
+      const after = cleaned.slice(end)
+
+      const blockBeforeMatch = before.match(/```(?:json)?\s*$/i)
+      const blockAfterMatch = after.match(/^\s*```/)
+
+      if (blockBeforeMatch && blockAfterMatch) {
+        start = start - blockBeforeMatch[0].length
+        end = end + blockAfterMatch[0].length
+      }
+
+      cleaned = cleaned.slice(0, start) + cleaned.slice(end)
+    }
+    return cleaned.trim()
+  })
+
   return (
-    <Show when={props.part.text.trim()}>
+    <Show when={cleaned()}>
       <box id={"text-" + props.part.id} paddingLeft={3} marginTop={1} flexShrink={0}>
         <markdown
           syntaxStyle={syntax()}
           streaming={true}
           internalBlockMode="top-level"
-          content={props.part.text.trim()}
+          content={cleaned()}
           tableOptions={{ style: "grid" }}
           conceal={ctx.conceal()}
           fg={theme.markdownText}
@@ -1688,7 +1840,7 @@ function GenericTool(props: ToolProps<any>) {
     <Show
       when={props.output && ctx.showGenericToolOutput()}
       fallback={
-        <InlineTool icon="⚙" pending="Writing command..." complete={true} part={props.part}>
+        <InlineTool icon="✦" pending="Writing command..." complete={true} part={props.part}>
           {props.tool} {input(props.input)}
         </InlineTool>
       }
@@ -1715,9 +1867,12 @@ function InlineTool(props: {
   complete: any
   pending: string
   spinner?: boolean
-  children: JSX.Element
+  children?: JSX.Element
   part: ToolPart
   onClick?: () => void
+  useCard?: boolean
+  tool?: string
+  target?: string
 }) {
   const [margin, setMargin] = createSignal(0)
   const { theme } = useTheme()
@@ -1749,10 +1904,33 @@ function InlineTool(props: {
       error()?.includes("user dismissed"),
   )
 
+  const cardVerdict = createMemo<"ok" | "err" | "pending" | "denied" | "skipped" | undefined>(() => {
+    if (!props.useCard) return undefined
+    if (denied()) return "denied"
+    if (error()) return "err"
+    if (props.part.state.status === "completed") return "ok"
+    if (props.part.state.status === "pending" || props.part.state.status === "running") return "pending"
+    return "skipped"
+  })
+
+  const durationStr = createMemo<string | undefined>(() => {
+    if (!props.useCard) return undefined
+    const time = (props.part.state as { time?: { start?: number; end?: number } }).time
+    if (!time || time.start === undefined) return undefined
+    const end = time.end ?? Date.now()
+    const ms = Math.max(0, end - time.start)
+    if (ms < 1000) return `${ms}ms`
+    if (ms < 60_000) return `${(ms / 1000).toFixed(1)}s`
+    return `${Math.floor(ms / 60_000)}m${Math.floor((ms % 60_000) / 1000)}s`
+  })
+
   return (
-    <box
-      marginTop={margin()}
-      paddingLeft={3}
+    <Show
+      when={cardVerdict()}
+      fallback={
+        <box
+          marginTop={margin()}
+          paddingLeft={3}
       onMouseOver={() => props.onClick && setHover(true)}
       onMouseOut={() => setHover(false)}
       onMouseUp={() => {
@@ -1784,7 +1962,7 @@ function InlineTool(props: {
     >
       <Switch>
         <Match when={props.spinner}>
-          <Spinner color={fg()} children={props.children} />
+          <Spinner context="executing" color={fg()} children={props.children} />
         </Match>
         <Match when={true}>
           <text paddingLeft={3} fg={fg()} attributes={denied() ? TextAttributes.STRIKETHROUGH : undefined}>
@@ -1798,7 +1976,35 @@ function InlineTool(props: {
         <text fg={theme.error}>{error()}</text>
       </Show>
     </box>
+      }
+    >
+      <StatusCard
+        icon={props.icon}
+        tool={props.tool ?? ""}
+        target={props.target ?? ""}
+        duration={durationStr()}
+        verdict={cardVerdict()!}
+        onClick={props.onClick}
+      />
+      <Show when={error() && !denied()}>
+        <text fg={theme.error}>{error()}</text>
+      </Show>
+    </Show>
   )
+}
+
+function gateTone(gate: { approved: boolean; skipped?: boolean; reason?: string } | undefined): "default" | "ok" | "err" | "warn" {
+  if (!gate) return "default"
+  if (!gate.approved) return "err"
+  if (gate.skipped) return "warn"
+  return "ok"
+}
+
+function gateSubtitle(gate: { approved: boolean; skipped?: boolean; badge?: string; reason?: string }): string {
+  if (!gate.approved) return "🛑 gate blocked"
+  if (gate.skipped) return "⏭  verify skipped"
+  if (gate.badge) return `✓ ${gate.badge.replace(/^ \[/, "").replace(/\] $/, "")}`
+  return "✓ verified"
 }
 
 function BlockTool(props: {
@@ -1807,44 +2013,58 @@ function BlockTool(props: {
   onClick?: () => void
   part?: ToolPart
   spinner?: boolean
+  gate?: { approved: boolean; skipped?: boolean; reason?: string; badge?: string }
+  framed?: boolean
 }) {
   const { theme } = useTheme()
   const renderer = useRenderer()
   const [hover, setHover] = createSignal(false)
   const error = createMemo(() => (props.part?.state.status === "error" ? props.part.state.error : undefined))
   return (
-    <box
-      border={["left"]}
-      paddingTop={1}
-      paddingBottom={1}
-      paddingLeft={2}
-      marginTop={1}
-      gap={1}
-      backgroundColor={hover() ? theme.backgroundMenu : theme.backgroundPanel}
-      customBorderChars={SplitBorder.customBorderChars}
-      borderColor={theme.background}
-      onMouseOver={() => props.onClick && setHover(true)}
-      onMouseOut={() => setHover(false)}
-      onMouseUp={() => {
-        if (renderer.getSelection()?.getSelectedText()) return
-        props.onClick?.()
-      }}
+    <Show
+      when={props.framed}
+      fallback={
+        <box
+          border={["left"]}
+          paddingTop={1}
+          paddingBottom={1}
+          paddingLeft={2}
+          marginTop={1}
+          gap={1}
+          backgroundColor={hover() ? theme.backgroundMenu : theme.backgroundPanel}
+          customBorderChars={SplitBorder.customBorderChars}
+          borderColor={theme.background}
+          onMouseOver={() => props.onClick && setHover(true)}
+          onMouseOut={() => setHover(false)}
+          onMouseUp={() => {
+            if (renderer.getSelection()?.getSelectedText()) return
+            props.onClick?.()
+          }}
+        >
+          <Show
+            when={props.spinner}
+            fallback={
+              <text paddingLeft={3} fg={theme.textMuted}>
+                {props.title}
+              </text>
+            }
+          >
+            <Spinner context="executing" color={theme.textMuted}>{props.title.replace(/^# /, "")}</Spinner>
+          </Show>
+          {props.children}
+          <Show when={error()}>
+            <text fg={theme.error}>{error()}</text>
+          </Show>
+        </box>
+      }
     >
-      <Show
-        when={props.spinner}
-        fallback={
-          <text paddingLeft={3} fg={theme.textMuted}>
-            {props.title}
-          </text>
-        }
-      >
-        <Spinner color={theme.textMuted}>{props.title.replace(/^# /, "")}</Spinner>
-      </Show>
-      {props.children}
-      <Show when={error()}>
-        <text fg={theme.error}>{error()}</text>
-      </Show>
-    </box>
+      <GatedFrame label={props.title} subtitle={props.gate ? gateSubtitle(props.gate) : undefined} tone={gateTone(props.gate)}>
+        {props.children}
+        <Show when={error()}>
+          <text fg={theme.error}>{error()}</text>
+        </Show>
+      </GatedFrame>
+    </Show>
   )
 }
 
@@ -1917,7 +2137,12 @@ function Write(props: ToolProps<typeof WriteTool>) {
   return (
     <Switch>
       <Match when={props.metadata.diagnostics !== undefined}>
-        <BlockTool title={"# Wrote " + pathFormatter.format(props.input.filePath)} part={props.part}>
+        <BlockTool
+          title={"# Wrote " + pathFormatter.format(props.input.filePath)}
+          part={props.part}
+          gate={props.metadata.gate}
+          framed
+        >
           <line_number fg={theme.textMuted} minWidth={3} paddingRight={1}>
             <code
               conceal={false}
@@ -1931,9 +2156,15 @@ function Write(props: ToolProps<typeof WriteTool>) {
         </BlockTool>
       </Match>
       <Match when={true}>
-        <InlineTool icon="←" pending="Preparing write..." complete={props.input.filePath} part={props.part}>
-          Write {pathFormatter.format(props.input.filePath)}
-        </InlineTool>
+        <InlineTool
+          icon="←"
+          pending="Preparing write..."
+          complete={props.input.filePath}
+          part={props.part}
+          useCard
+          tool="write"
+          target={pathFormatter.format(props.input.filePath ?? "")}
+        />
       </Match>
     </Switch>
   )
@@ -1941,13 +2172,20 @@ function Write(props: ToolProps<typeof WriteTool>) {
 
 function Glob(props: ToolProps<typeof GlobTool>) {
   const pathFormatter = usePathFormatter()
+  const target = createMemo(() => {
+    const p = props.input.path ? `${pathFormatter.format(props.input.path)}/` : ""
+    return `${p}${props.input.pattern ?? ""}`
+  })
   return (
-    <InlineTool icon="✱" pending="Finding files..." complete={props.input.pattern} part={props.part}>
-      Glob "{props.input.pattern}" <Show when={props.input.path}>in {pathFormatter.format(props.input.path)} </Show>
-      <Show when={props.metadata.count}>
-        ({props.metadata.count} {props.metadata.count === 1 ? "match" : "matches"})
-      </Show>
-    </InlineTool>
+    <InlineTool
+      icon="✱"
+      pending="Finding files..."
+      complete={props.input.pattern}
+      part={props.part}
+      useCard
+      tool="glob"
+      target={target()}
+    />
   )
 }
 
@@ -1970,9 +2208,10 @@ function Read(props: ToolProps<typeof ReadTool>) {
         complete={props.input.filePath}
         spinner={isRunning()}
         part={props.part}
-      >
-        Read {pathFormatter.format(props.input.filePath)} {input(props.input, ["filePath"])}
-      </InlineTool>
+        useCard
+        tool="read"
+        target={pathFormatter.format(props.input.filePath ?? "")}
+      />
       <For each={loaded()}>
         {(filepath) => (
           <box paddingLeft={3}>
@@ -1988,31 +2227,48 @@ function Read(props: ToolProps<typeof ReadTool>) {
 
 function Grep(props: ToolProps<typeof GrepTool>) {
   const pathFormatter = usePathFormatter()
+  const target = createMemo(() => {
+    const p = props.input.path ? `${pathFormatter.format(props.input.path)}/` : ""
+    return `${p}${props.input.pattern ?? ""}`
+  })
   return (
-    <InlineTool icon="✱" pending="Searching content..." complete={props.input.pattern} part={props.part}>
-      Grep "{props.input.pattern}" <Show when={props.input.path}>in {pathFormatter.format(props.input.path)} </Show>
-      <Show when={props.metadata.matches}>
-        ({props.metadata.matches} {props.metadata.matches === 1 ? "match" : "matches"})
-      </Show>
-    </InlineTool>
+    <InlineTool
+      icon="✱"
+      pending="Searching content..."
+      complete={props.input.pattern}
+      part={props.part}
+      useCard
+      tool="grep"
+      target={target()}
+    />
   )
 }
 
 function WebFetch(props: ToolProps<typeof WebFetchTool>) {
   return (
-    <InlineTool icon="%" pending="Fetching from the web..." complete={props.input.url} part={props.part}>
-      WebFetch {props.input.url}
-    </InlineTool>
+    <InlineTool
+      icon="%"
+      pending="Fetching from the web..."
+      complete={props.input.url}
+      part={props.part}
+      useCard
+      tool="webfetch"
+      target={props.input.url ?? ""}
+    />
   )
 }
 
 function WebSearch(props: ToolProps<typeof WebSearchTool>) {
-  const metadata = () => props.metadata as { numResults?: number; provider?: unknown }
   return (
-    <InlineTool icon="◈" pending="Searching web..." complete={props.input.query} part={props.part}>
-      {webSearchProviderLabel(metadata().provider)} "{props.input.query}"{" "}
-      <Show when={metadata().numResults}>({metadata().numResults} results)</Show>
-    </InlineTool>
+    <InlineTool
+      icon="◈"
+      pending="Searching web..."
+      complete={props.input.query}
+      part={props.part}
+      useCard
+      tool="websearch"
+      target={props.input.query ?? ""}
+    />
   )
 }
 
@@ -2041,6 +2297,60 @@ function Task(props: ToolProps<typeof TaskTool>) {
 
   const isRunning = createMemo(() => props.part.state.status === "running")
 
+  const lastMessage = createMemo(() => {
+    const list = messages()
+    return list[list.length - 1]
+  })
+
+  const activePart = createMemo(() => {
+    const msg = lastMessage()
+    if (!msg || msg.role !== "assistant") return
+    const parts = sync.data.part[msg.id] ?? []
+    return parts[parts.length - 1]
+  })
+
+  const subagentStatus = createMemo(() => {
+    const part = activePart()
+    if (!part) return
+    if (part.type === "reasoning") {
+      const text = part.text || ""
+      const title = reasoningTitle(text)
+      return title ? `Thinking: ${title}...` : "Thinking..."
+    }
+    if (part.type === "tool") {
+      const tool = part.tool
+      const input = part.state?.input ?? {}
+      const title = part.state?.status === "running" || part.state?.status === "completed" ? part.state.title ?? "" : ""
+      if (part.state?.status === "running" || part.state?.status === "pending") {
+        if (tool === "bash") {
+          return `Running command: ${input.command || title}...`
+        }
+        if (tool === "read") {
+          return `Reading file: ${input.filePath || title}...`
+        }
+        if (tool === "write") {
+          return `Writing file: ${input.filePath || title}...`
+        }
+        if (tool === "edit") {
+          return `Editing file: ${input.filePath || title}...`
+        }
+        if (tool === "grep") {
+          return `Grep searching for: ${input.pattern || title}...`
+        }
+        if (tool === "glob") {
+          return `Finding files matching: ${input.pattern || title}...`
+        }
+        if (tool === "websearch") {
+          return `Searching web for: ${input.query || title}...`
+        }
+        if (tool === "webfetch") {
+          return `Fetching web content: ${input.url || title}...`
+        }
+        return `Running ${tool}...`
+      }
+    }
+  })
+
   const duration = createMemo(() => {
     const first = messages().find((x) => x.role === "user")?.time.created
     const assistant = messages().findLast((x) => x.role === "assistant")?.time.completed
@@ -2054,13 +2364,17 @@ function Task(props: ToolProps<typeof TaskTool>) {
       props.metadata.background === true ? `${props.input.description} (background)` : props.input.description
     let content = [`${Locale.titlecase(props.input.subagent_type ?? "General")} Task — ${description}`]
 
-    if (isRunning() && tools().length > 0) {
-      // content[0] += ` · ${tools().length} toolcalls`
-      if (current()) {
+    if (isRunning()) {
+      const status = subagentStatus()
+      if (status) {
+        content.push(`↳ ${status}`)
+      } else if (current()) {
         const state = current()!.state
         const title = state.status === "running" || state.status === "completed" ? state.title : undefined
         content.push(`↳ ${Locale.titlecase(current()!.tool)} ${title}`)
-      } else content.push(`↳ ${tools().length} toolcalls`)
+      } else {
+        content.push("↳ Initializing subagent...")
+      }
     }
 
     if (props.part.state.status === "completed") {
@@ -2081,14 +2395,15 @@ function Task(props: ToolProps<typeof TaskTool>) {
       complete={props.input.description}
       pending="Delegating..."
       part={props.part}
+      useCard
+      tool="task"
+      target={props.input.description ?? ""}
       onClick={() => {
         if (props.metadata.sessionId) {
           navigate({ type: "session", sessionID: props.metadata.sessionId })
         }
       }}
-    >
-      {content()}
-    </InlineTool>
+    />
   )
 }
 
@@ -2111,7 +2426,12 @@ function Edit(props: ToolProps<typeof EditTool>) {
   return (
     <Switch>
       <Match when={props.metadata.diff !== undefined}>
-        <BlockTool title={"← Edit " + pathFormatter.format(props.input.filePath)} part={props.part}>
+        <BlockTool
+          title={"← Edit " + pathFormatter.format(props.input.filePath)}
+          part={props.part}
+          gate={props.metadata.gate}
+          framed
+        >
           <box paddingLeft={1}>
             <diff
               diff={diffContent()}
@@ -2137,9 +2457,15 @@ function Edit(props: ToolProps<typeof EditTool>) {
         </BlockTool>
       </Match>
       <Match when={true}>
-        <InlineTool icon="←" pending="Preparing edit..." complete={props.input.filePath} part={props.part}>
-          Edit {pathFormatter.format(props.input.filePath)} {input({ replaceAll: props.input.replaceAll })}
-        </InlineTool>
+        <InlineTool
+          icon="←"
+          pending="Preparing edit..."
+          complete={props.input.filePath}
+          part={props.part}
+          useCard
+          tool="edit"
+          target={pathFormatter.format(props.input.filePath ?? "")}
+        />
       </Match>
     </Switch>
   )
@@ -2196,7 +2522,7 @@ function ApplyPatch(props: ToolProps<typeof ApplyPatchTool>) {
       <Match when={files().length > 0}>
         <For each={files()}>
           {(file) => (
-            <BlockTool title={title(file)} part={props.part}>
+            <BlockTool title={title(file)} part={props.part} gate={props.metadata.gate} framed>
               <Show
                 when={file.type !== "delete"}
                 fallback={
@@ -2213,9 +2539,15 @@ function ApplyPatch(props: ToolProps<typeof ApplyPatchTool>) {
         </For>
       </Match>
       <Match when={true}>
-        <InlineTool icon="%" pending="Preparing patch..." complete={false} part={props.part}>
-          Patch
-        </InlineTool>
+        <InlineTool
+          icon="%"
+          pending="Preparing patch..."
+          complete={false}
+          part={props.part}
+          useCard
+          tool="patch"
+          target=""
+        />
       </Match>
     </Switch>
   )
@@ -2234,7 +2566,7 @@ function TodoWrite(props: ToolProps<typeof TodoWriteTool>) {
         </BlockTool>
       </Match>
       <Match when={true}>
-        <InlineTool icon="⚙" pending="Updating todos..." complete={false} part={props.part}>
+        <InlineTool icon="✦" pending="Updating todos..." complete={false} part={props.part}>
           Updating todos...
         </InlineTool>
       </Match>

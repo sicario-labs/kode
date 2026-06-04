@@ -1,4 +1,4 @@
-import { TextAttributes } from "@opentui/core"
+import { TextAttributes, RGBA } from "@opentui/core"
 import open from "open"
 import { createSignal } from "solid-js"
 import { useTheme } from "@tui/context/theme"
@@ -26,6 +26,8 @@ function dismiss(props: DialogRetryActionProps, dialog: ReturnType<typeof useDia
   props.onClose?.(true)
   dialog.clear()
 }
+
+const FOREGROUND_ALPHA = 0.5
 
 function panelOverlay(color: RGBA) {
   const [r, g, b] = color.toInts()
@@ -99,7 +101,7 @@ export function DialogRetryAction(props: DialogRetryActionProps) {
             onMouseUp={() => dismiss(props, dialog)}
           >
             <text
-              fg={selected() === "dismiss" ? theme.textInverse : theme.textMuted}
+              fg={selected() === "dismiss" ? theme.background : theme.textMuted}
               attributes={selected() === "dismiss" ? TextAttributes.BOLD : undefined}
             >
               don't show again
@@ -113,7 +115,7 @@ export function DialogRetryAction(props: DialogRetryActionProps) {
             onMouseUp={() => runAction(props, dialog)}
           >
             <text
-              fg={selected() === "action" ? theme.textInverse : theme.text}
+              fg={selected() === "action" ? theme.background : theme.text}
               attributes={selected() === "action" ? TextAttributes.BOLD : undefined}
             >
               {props.label}

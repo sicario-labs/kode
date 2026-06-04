@@ -27,6 +27,7 @@ import {
   spawnLocalServer,
   type SidecarListener,
 } from "./server"
+import { resolveDesktopKodeBinary } from "./kode-binary"
 import {
   createLoadingWindow,
   createMainWindow,
@@ -258,6 +259,49 @@ const main = Effect.gen(function* () {
     setBackgroundColor: (color) => setBackgroundColor(color),
     exportDebugLogs: () => exportDebugLogs(),
     recordFatalRendererError: (error) => writeLog("renderer", "fatal renderer error", { ...error }, "error"),
+    verifyFiles: async (files) => {
+      const kodeBin = resolveDesktopKodeBinary()
+      if (!kodeBin) {
+        return {
+          status: "FAIL" as const,
+          failed_files: { "_verification_binary": "Verification binary not found. Set KODE_BIN environment variable." }
+        }
+      }
+      
+      const input = {
+        files: Object.fromEntries(files.map((f) => [f.path, f.content])),
+        block_architecture: false,
+        architecture_rules: [],
+      }
+      
+      const tmpFile = join(tmpdir(), `kode-desktop-verify-${Date.now()}-${Math.random().toString(36).slice(2)}.json`)
+      try {
+        const { writeFileSync, unlinkSync } = require("node:fs")
+        writeFileSync(tmpFile, JSON.stringify(input))
+        
+        const stdout = await new Promise<string>((resolvePromise, reject) => {
+          const { execFile } = require("node:child_process")
+          execFile(kodeBin, ["verify", "--input", tmpFile, "--project-dir", process.cwd()], { timeout: 30000 }, (err: Error | null, stdout: string) => {
+            if (err) {
+              reject(err)
+            } else {
+              resolvePromise(stdout)
+            }
+          })
+        })
+        
+        try {
+          unlinkSync(tmpFile)
+        } catch {}
+        
+        return JSON.parse(stdout)
+      } catch (error: any) {
+        return {
+          status: "FAIL" as const,
+          failed_files: { "_verification": error.message || String(error) }
+        }
+      }
+    },
   })
 
   yield* Effect.promise(() => app.whenReady())

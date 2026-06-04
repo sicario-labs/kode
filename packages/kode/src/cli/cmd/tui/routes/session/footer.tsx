@@ -5,11 +5,15 @@ import { useDirectory } from "../../context/directory"
 import { useConnected } from "../../component/use-connected"
 import { createStore } from "solid-js/store"
 import { useRoute } from "../../context/route"
+import { useLocal } from "../../context/local"
+import { Global } from "@kode/core/global"
+import { Chip, StatusBar } from "../../component/kode-ui"
 
 export function Footer() {
   const { theme } = useTheme()
   const sync = useSync()
   const route = useRoute()
+  const local = useLocal()
   const mcp = createMemo(() => Object.values(sync.data.mcp).filter((x) => x.status === "connected").length)
   const mcpError = createMemo(() => Object.values(sync.data.mcp).some((x) => x.status === "failed"))
   const lsp = createMemo(() => Object.keys(sync.data.lsp))
@@ -20,14 +24,23 @@ export function Footer() {
   const directory = useDirectory()
   const connected = useConnected()
 
+  const dirDisplay = createMemo(() => {
+    const d = (directory() || process.cwd()).replace(Global.Path.home, "~")
+    return d
+  })
+
+  const modelDisplay = createMemo(() => {
+    const m = local.model.current()
+    if (!m) return "—"
+    return `${m.providerID}/${m.modelID}`
+  })
+
   const [store, setStore] = createStore({
     welcome: false,
   })
 
   onMount(() => {
-    // Track all timeouts to ensure proper cleanup
     const timeouts: ReturnType<typeof setTimeout>[] = []
-
     function tick() {
       if (connected()) return
       if (!store.welcome) {
@@ -35,7 +48,6 @@ export function Footer() {
         timeouts.push(setTimeout(() => tick(), 5000))
         return
       }
-
       if (store.welcome) {
         setStore("welcome", false)
         timeouts.push(setTimeout(() => tick(), 10_000))
@@ -43,49 +55,48 @@ export function Footer() {
       }
     }
     timeouts.push(setTimeout(() => tick(), 10_000))
-
     onCleanup(() => {
       timeouts.forEach(clearTimeout)
     })
   })
 
   return (
-    <box flexDirection="row" justifyContent="space-between" gap={1} flexShrink={0}>
-      <text fg={theme.textMuted}>{directory()}</text>
-      <box gap={2} flexDirection="row" flexShrink={0}>
+    <StatusBar>
+      <Chip label="◉" tone="primary" />
+      <text fg={theme.text}>{dirDisplay()}</text>
+      <Show when={sync.data.vcs?.branch}>
+        <text fg={theme.secondary}>:{sync.data.vcs?.branch}</text>
+      </Show>
+      <text fg={theme.border}>│</text>
+      <Chip label="▢" value={modelDisplay()} tone="default" />
+      <Chip label="◇" value={`0/3`} tone="warn" />
+      <Show when={connected()}>
+        <Chip label="⏱" value="—" />
+        <Chip label="⛁" value="$0.000" />
+        <Show when={permissions().length > 0}>
+          <Chip label="△" value={`${permissions().length}`} tone="warn" />
+        </Show>
+        <Show when={lsp().length > 0}>
+          <Chip label="•" value={`${lsp().length} LSP`} tone={lsp().length > 0 ? "ok" : "muted"} />
+        </Show>
+        <Show when={mcp()}>
+          <Chip
+            label="⊙"
+            value={`${mcp()} MCP`}
+            tone={mcpError() ? "err" : mcp() > 0 ? "ok" : "muted"}
+          />
+        </Show>
+        <text fg={theme.textMuted}>/status</text>
+      </Show>
+      <Show when={!connected()}>
         <Switch>
           <Match when={store.welcome}>
             <text fg={theme.text}>
               Get started <span style={{ fg: theme.textMuted }}>/connect</span>
             </text>
           </Match>
-          <Match when={connected()}>
-            <Show when={permissions().length > 0}>
-              <text fg={theme.warning}>
-                <span style={{ fg: theme.warning }}>△</span> {permissions().length} Permission
-                {permissions().length > 1 ? "s" : ""}
-              </text>
-            </Show>
-            <text fg={theme.text}>
-              <span style={{ fg: lsp().length > 0 ? theme.success : theme.textMuted }}>•</span> {lsp().length} LSP
-            </text>
-            <Show when={mcp()}>
-              <text fg={theme.text}>
-                <Switch>
-                  <Match when={mcpError()}>
-                    <span style={{ fg: theme.error }}>⊙ </span>
-                  </Match>
-                  <Match when={true}>
-                    <span style={{ fg: theme.success }}>⊙ </span>
-                  </Match>
-                </Switch>
-                {mcp()} MCP
-              </text>
-            </Show>
-            <text fg={theme.textMuted}>/status</text>
-          </Match>
         </Switch>
-      </box>
-    </box>
+      </Show>
+    </StatusBar>
   )
 }

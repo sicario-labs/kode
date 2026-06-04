@@ -225,12 +225,29 @@ export const ApplyPatchTool = Tool.define(
         .filter((c) => c.type !== "delete")
         .map((c) => ({ path: c.filePath, content: c.newContent }))
 
+      let gateOutcome: { approved: boolean; skipped: boolean; badge?: string; failureDetails?: string } | undefined
       if (verifyFilesList.length > 0) {
         const verification = yield* verifyFilesGate(verifyFilesList, config ?? undefined)
+        gateOutcome = verification
         if (!verification.approved) {
           const output = `Kode Gate blocked the patch:\n\n${verification.failureDetails}\n\nPlease fix the issues and try again.`
-          yield* ctx.metadata({ title: "🛑 Gate Blocked", metadata: { verdict: verification.result, files } })
-          return { title: output, metadata: { verdict: verification.result, files }, output }
+          yield* ctx.metadata({ title: "🛑 Gate Blocked", metadata: { verdict: verification.result, files, diff: totalDiff, diagnostics: {} } })
+          return {
+            title: output,
+            metadata: {
+              verdict: verification.result,
+              files,
+              diff: totalDiff,
+              diagnostics: {},
+              gate: {
+                approved: false,
+                skipped: verification.skipped,
+                reason: verification.failureDetails,
+                badge: undefined as string | undefined,
+              },
+            },
+            output,
+          }
         }
       }
 
@@ -318,6 +335,13 @@ export const ApplyPatchTool = Tool.define(
           diff: totalDiff,
           files,
           diagnostics,
+          verdict: undefined,
+          gate: {
+            approved: gateOutcome ? gateOutcome.approved : true,
+            skipped: gateOutcome ? gateOutcome.skipped : true,
+            reason: undefined as string | undefined,
+            badge: gateOutcome ? gateOutcome.badge : undefined,
+          },
         },
         output,
       }

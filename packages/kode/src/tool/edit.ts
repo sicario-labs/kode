@@ -203,7 +203,18 @@ export const EditTool = Tool.define(
             output = `Kode Gate blocked this edit:\n\n${verification.failureDetails}\n\nPlease fix the issues and try again.`
             return {
               title: `🛑 ${path.relative(instance.worktree, filePath)}`,
-              metadata: { diff, filediff, diagnostics: {}, verdict: verification.result },
+              metadata: {
+                diff,
+                filediff,
+                diagnostics: {},
+                verdict: verification.result,
+                gate: {
+                  approved: false,
+                  skipped: verification.skipped,
+                  reason: verification.failureDetails,
+                  badge: undefined as string | undefined,
+                },
+              },
               output,
             }
           }
@@ -219,6 +230,13 @@ export const EditTool = Tool.define(
               diagnostics,
               diff,
               filediff,
+              verdict: verification.result,
+              gate: {
+                approved: true,
+                skipped: verification.skipped,
+                reason: undefined as string | undefined,
+                badge: verification.badge,
+              },
             },
             title: `${path.relative(instance.worktree, filePath)}`,
             output,

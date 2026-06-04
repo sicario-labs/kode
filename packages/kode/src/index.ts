@@ -34,16 +34,16 @@ const cli = (await import("yargs")).default(process.argv.slice(2))
 try {
   const args = process.argv.slice(2)
   if (args.includes("-h") || args.includes("--help")) {
-    await cli.parse(args, (_err, _argv, out) => {
+    await cli.parse(args, (_err: any, _argv: any, out: any) => {
       if (out) show(out)
     })
   } else {
-    await cli.parse().catch((e: unknown) => {
+    await (cli.parse() as Promise<unknown>).catch((e: unknown) => {
       process.stderr.write("CLI_PARSE_ERROR: " + (e instanceof Error ? e.stack : String(e)) + "\n")
       process.exitCode = 1
     })
   }
-} catch (e) {
+} catch (e: unknown) {
   process.stderr.write("TOP_LEVEL_CATCH: " + (e instanceof Error ? e.stack : String(e)) + "\n")
   process.exitCode = 1
 } finally {

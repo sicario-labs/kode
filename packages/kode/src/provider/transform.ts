@@ -453,21 +453,25 @@ export function message(msgs: ModelMessage[], model: Provider.Model, options: Re
   if (model.api.npm === "@ai-sdk/gateway") {
     msgs = msgs.map((msg) => {
       if (msg.role !== "tool") return msg
-      if (!Array.isArray(msg.content)) return { ...msg, role: "user" as const }
-      const text = msg.content
-        .filter((p): p is ToolResultPart => p.type === "tool-result")
-        .map((p) => {
-          if (p.output.type === "text") return p.output.value
-          if (p.output.type === "content") {
-            return p.output.value
-              .filter((c) => c.type === "text")
-              .map((c) => c.text)
-              .join("\n")
-          }
-          return ""
-        })
-        .filter(Boolean)
-        .join("\n")
+      let text = ""
+      if (Array.isArray(msg.content)) {
+        text = msg.content
+          .filter((p): p is ToolResultPart => p.type === "tool-result")
+          .map((p) => {
+            if (p.output.type === "text") return p.output.value
+            if (p.output.type === "content") {
+              return p.output.value
+                .filter((c) => c.type === "text")
+                .map((c) => c.text)
+                .join("\n")
+            }
+            return ""
+          })
+          .filter(Boolean)
+          .join("\n")
+      } else if (typeof msg.content === "string") {
+        text = msg.content
+      }
       return { role: "user" as const, content: text || "tool result" }
     })
   }

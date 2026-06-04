@@ -297,7 +297,8 @@ type LogoContext = {
 
 function build(shape: LogoShape): LogoContext {
   const LEFT = shape.left[0]?.length ?? 0
-  const FULL = shape.left.map((line, i) => line + " ".repeat(GAP) + shape.right[i])
+  const gap = LEFT > 0 ? GAP : 0
+  const FULL = shape.left.map((line, i) => line + " ".repeat(gap) + shape.right[i])
   const SPAN = Math.hypot(FULL[0]?.length ?? 0, FULL.length * 2) * 0.94
   return { LEFT, FULL, SPAN, MAP: mapGlyphs(FULL), shape }
 }

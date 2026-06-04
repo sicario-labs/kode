@@ -436,8 +436,8 @@ export const GithubRunCommand = effectCmd({
     const sessionShare = yield* SessionShare.Service
     const sessionPrompt = yield* SessionPrompt.Service
     const busSvc = yield* Bus.Service
-    const runLocalEffect = <A, E>(effect: Effect.Effect<A, E>) =>
-      Effect.runPromise(effect.pipe(Effect.provideService(InstanceRef, ctx)))
+    const runLocalEffect = <A, E, R>(effect: Effect.Effect<A, E, R>): Promise<A> =>
+      Effect.runPromise(effect.pipe(Effect.provideService(InstanceRef, ctx)) as any)
     yield* Effect.promise(async () => {
       const isMock = args.token || args.event
 

@@ -224,10 +224,10 @@ function toolError(ctx: ToolFrame): string {
 function fallbackStart(ctx: ToolFrame): string {
   const extra = info(ctx.input)
   if (!extra) {
-    return `⚙ ${ctx.name}`
+    return `✦ ${ctx.name}`
   }
 
-  return `⚙ ${ctx.name} ${extra}`
+  return `✦ ${ctx.name} ${extra}`
 }
 
 function fallbackFinal(ctx: ToolFrame): string {
@@ -276,7 +276,7 @@ function fallbackInline(ctx: ToolFrame): ToolInline {
   const title = text(ctx.state.title) || (Object.keys(ctx.input).length > 0 ? JSON.stringify(ctx.input) : "Unknown")
 
   return {
-    icon: "⚙",
+    icon: "✦",
     title: `${ctx.name} ${title}`,
   }
 }
@@ -690,7 +690,7 @@ function scrollReadStart(p: ToolProps<typeof ReadTool>): string {
   const file = toolPath(p.input.filePath)
   const extra = info(p.frame.input, ["filePath"])
   const tail = extra ? ` ${extra}` : ""
-  return `→ Read ${file}${tail}`.trim()
+  return `✦ Read ${file}${tail}`.trim()
 }
 
 function scrollWriteStart(_: ToolProps<typeof WriteTool>): string {
@@ -858,16 +858,16 @@ function scrollQuestionFinal(p: ToolProps<typeof QuestionTool>): string {
 }
 
 function scrollLspStart(p: ToolProps<typeof LspTool>): string {
-  return `→ ${lspTitle(p.input)}`
+  return `✦ ${lspTitle(p.input)}`
 }
 
 function scrollSkillStart(p: ToolProps<typeof SkillTool>): string {
-  return `→ Skill "${p.input.name ?? ""}"`
+  return `✦ Skill "${p.input.name ?? ""}"`
 }
 
 function scrollGlobStart(p: ToolProps<typeof GlobTool>): string {
   const pattern = p.input.pattern ?? ""
-  const head = pattern ? `✱ Glob "${pattern}"` : "✱ Glob"
+  const head = pattern ? `✦ Glob "${pattern}"` : "✦ Glob"
   const dir = p.input.path ?? ""
   if (!dir) {
     return head
@@ -882,7 +882,7 @@ function scrollGlobFinal(p: ToolProps<typeof GlobTool>): string {
 
 function scrollGrepStart(p: ToolProps<typeof GrepTool>): string {
   const pattern = p.input.pattern ?? ""
-  const head = pattern ? `✱ Grep "${pattern}"` : "✱ Grep"
+  const head = pattern ? `✦ Grep "${pattern}"` : "✦ Grep"
   const dir = p.input.path ?? ""
   if (!dir) {
     return head
@@ -894,29 +894,29 @@ function scrollGrepStart(p: ToolProps<typeof GrepTool>): string {
 function scrollListStart(p: ToolProps): string {
   const dir = text(dict(p.input).path)
   if (!dir) {
-    return "→ List"
+    return "✦ List"
   }
 
-  return `→ List ${toolPath(dir)}`
+  return `✦ List ${toolPath(dir)}`
 }
 
 function scrollWebfetchStart(p: ToolProps<typeof WebFetchTool>): string {
   const url = p.input.url ?? ""
   if (!url) {
-    return "% WebFetch"
+    return "✦ WebFetch"
   }
 
-  return `% WebFetch ${url}`
+  return `✦ WebFetch ${url}`
 }
 
 function scrollWebSearchStart(p: ToolProps<typeof WebSearchTool>): string {
   const title = webSearchProviderLabel(p.metadata.provider)
   const query = p.input.query ?? ""
   if (!query) {
-    return `◈ ${title}`
+    return `✦ ${title}`
   }
 
-  return `◈ ${title} "${query}"`
+  return `✦ ${title} "${query}"`
 }
 
 function permEdit(p: ToolPermissionProps<typeof EditTool>): ToolPermissionInfo {

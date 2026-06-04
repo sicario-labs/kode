@@ -430,7 +430,7 @@ export const { use: useSync, provider: SyncProvider } = createSimpleContext({
             const config = responses[4]
             const sessions = responses[5]
 
-            const baseURL = "https://api.trykode.xyz/v1"
+            const baseURL = process.env.KODE_LLM_ENDPOINT || "https://api.trykode.xyz/v1"
 
             const kodeProvider = (): Provider => ({
               id: "kode",

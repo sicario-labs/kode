@@ -70,7 +70,7 @@ function iconPath() {
   return join(iconsDir(), `icon.${ext}`)
 }
 
-function tone() {
+function tone(): "dark" | "light" {
   nativeTheme.themeSource = "dark"
   return "dark"
 }

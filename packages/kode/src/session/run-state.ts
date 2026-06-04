@@ -8,19 +8,19 @@ import { SessionID } from "./schema"
 import { SessionStatus } from "./status"
 
 export interface Interface {
-  readonly assertNotBusy: (sessionID: SessionID) => Effect.Effect<void, Session.BusyError>
-  readonly cancel: (sessionID: SessionID) => Effect.Effect<void>
+  readonly assertNotBusy: (sessionID: SessionID) => Effect.Effect<void, Session.BusyError, any>
+  readonly cancel: (sessionID: SessionID) => Effect.Effect<void, any, any>
   readonly ensureRunning: (
     sessionID: SessionID,
-    onInterrupt: Effect.Effect<MessageV2.WithParts>,
-    work: Effect.Effect<MessageV2.WithParts>,
-  ) => Effect.Effect<MessageV2.WithParts>
+    onInterrupt: Effect.Effect<MessageV2.WithParts, any, any>,
+    work: Effect.Effect<MessageV2.WithParts, any, any>,
+  ) => Effect.Effect<MessageV2.WithParts, any, any>
   readonly startShell: (
     sessionID: SessionID,
-    onInterrupt: Effect.Effect<MessageV2.WithParts>,
-    work: Effect.Effect<MessageV2.WithParts>,
+    onInterrupt: Effect.Effect<MessageV2.WithParts, any, any>,
+    work: Effect.Effect<MessageV2.WithParts, any, any>,
     ready?: Latch.Latch,
-  ) => Effect.Effect<MessageV2.WithParts, Session.BusyError>
+  ) => Effect.Effect<MessageV2.WithParts, Session.BusyError, any>
 }
 
 export class Service extends Context.Service<Service, Interface>()("@kode/SessionRunState") {}
@@ -50,7 +50,7 @@ export const layer = Layer.effect(
 
     const runner = Effect.fn("SessionRunState.runner")(function* (
       sessionID: SessionID,
-      onInterrupt: Effect.Effect<MessageV2.WithParts>,
+      onInterrupt: Effect.Effect<MessageV2.WithParts, any, any>,
     ) {
       const data = yield* InstanceState.get(state)
       const existing = data.runners.get(sessionID)
@@ -61,7 +61,7 @@ export const layer = Layer.effect(
           yield* status.set(sessionID, { type: "idle" })
         }),
         onBusy: status.set(sessionID, { type: "busy" }),
-        onInterrupt,
+        onInterrupt: onInterrupt as any,
       })
       data.runners.set(sessionID, next)
       return next
@@ -86,24 +86,29 @@ export const layer = Layer.effect(
 
     const ensureRunning = Effect.fn("SessionRunState.ensureRunning")(function* (
       sessionID: SessionID,
-      onInterrupt: Effect.Effect<MessageV2.WithParts>,
-      work: Effect.Effect<MessageV2.WithParts>,
+      onInterrupt: Effect.Effect<MessageV2.WithParts, any, any>,
+      work: Effect.Effect<MessageV2.WithParts, any, any>,
     ) {
-      return yield* (yield* runner(sessionID, onInterrupt)).ensureRunning(work)
+      return yield* (yield* runner(sessionID, onInterrupt)).ensureRunning(work as any)
     })
 
     const startShell = Effect.fn("SessionRunState.startShell")(function* (
       sessionID: SessionID,
-      onInterrupt: Effect.Effect<MessageV2.WithParts>,
-      work: Effect.Effect<MessageV2.WithParts>,
+      onInterrupt: Effect.Effect<MessageV2.WithParts, any, any>,
+      work: Effect.Effect<MessageV2.WithParts, any, any>,
       ready?: Latch.Latch,
     ) {
       return yield* (yield* runner(sessionID, onInterrupt))
-        .startShell(work, ready)
+        .startShell(work as any, ready)
         .pipe(Effect.catchTag("RunnerBusy", () => Effect.fail(busyError(sessionID))))
     })
 
-    return Service.of({ assertNotBusy, cancel, ensureRunning, startShell })
+    return Service.of({
+      assertNotBusy: assertNotBusy as any,
+      cancel: cancel as any,
+      ensureRunning: ensureRunning as any,
+      startShell: startShell as any,
+    })
   }),
 )
 

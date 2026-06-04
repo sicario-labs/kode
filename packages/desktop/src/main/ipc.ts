@@ -11,6 +11,7 @@ import type {
   TitlebarTheme,
   WindowConfig,
   WslConfig,
+  VerifyResult,
 } from "../preload/types"
 import { runDesktopMenuAction } from "./desktop-menu-actions"
 import { getStore } from "./store"
@@ -43,6 +44,7 @@ type Deps = {
   setBackgroundColor: (color: string) => void
   exportDebugLogs: () => Promise<string>
   recordFatalRendererError: (error: FatalRendererError) => Promise<void> | void
+  verifyFiles: (files: Array<{ path: string; content: string }>) => Promise<VerifyResult>
 }
 
 export function registerIpcHandlers(deps: Deps) {
@@ -77,6 +79,9 @@ export function registerIpcHandlers(deps: Deps) {
   ipcMain.handle("export-debug-logs", () => deps.exportDebugLogs())
   ipcMain.handle("record-fatal-renderer-error", (_event: IpcMainInvokeEvent, error: FatalRendererError) =>
     deps.recordFatalRendererError(error),
+  )
+  ipcMain.handle("verify-files", (_event: IpcMainInvokeEvent, files: Array<{ path: string; content: string }>) =>
+    deps.verifyFiles(files),
   )
   ipcMain.handle("store-get", (_event: IpcMainInvokeEvent, name: string, key: string) => {
     try {

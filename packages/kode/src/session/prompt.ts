@@ -84,11 +84,11 @@ const elog = EffectLogger.create({ service: "session.prompt" })
 
 export interface Interface {
   readonly cancel: (sessionID: SessionID) => Effect.Effect<void>
-  readonly prompt: (input: PromptInput) => Effect.Effect<MessageV2.WithParts, Image.Error>
-  readonly loop: (input: LoopInput) => Effect.Effect<MessageV2.WithParts>
-  readonly shell: (input: ShellInput) => Effect.Effect<MessageV2.WithParts, Session.BusyError>
-  readonly command: (input: CommandInput) => Effect.Effect<MessageV2.WithParts, Image.Error>
-  readonly resolvePromptParts: (template: string) => Effect.Effect<PromptInput["parts"]>
+  readonly prompt: (input: PromptInput) => Effect.Effect<MessageV2.WithParts, Image.Error, never>
+  readonly loop: (input: LoopInput) => Effect.Effect<MessageV2.WithParts, any, never>
+  readonly shell: (input: ShellInput) => Effect.Effect<MessageV2.WithParts, Session.BusyError, never>
+  readonly command: (input: CommandInput) => Effect.Effect<MessageV2.WithParts, Session.BusyError | Image.Error, never>
+  readonly resolvePromptParts: (template: string) => Effect.Effect<PromptInput["parts"], any, never>
 }
 
 export class Service extends Context.Service<Service, Interface>()("@kode/SessionPrompt") {}
@@ -126,10 +126,10 @@ export const layer = Layer.effect(
     const flags = yield* RuntimeFlags.Service
     const ops = Effect.fn("SessionPrompt.ops")(function* () {
       return {
-        cancel: (sessionID: SessionID) => cancel(sessionID),
-        resolvePromptParts: (template: string) => resolvePromptParts(template),
-        prompt: (input: PromptInput) => prompt(input).pipe(Effect.catch(Effect.die)),
-        loop: (input: LoopInput) => loop(input),
+        cancel: ((sessionID: SessionID) => cancel(sessionID)) as any,
+        resolvePromptParts: ((template: string) => resolvePromptParts(template)) as any,
+        prompt: ((input: PromptInput) => prompt(input).pipe(Effect.catch(Effect.die))) as any,
+        loop: ((input: LoopInput) => loop(input)) as any,
       } satisfies TaskPromptOps
     })
 
@@ -785,7 +785,7 @@ export const layer = Layer.effect(
         })
       })
 
-      const resolvePart: (part: PromptInput["parts"][number]) => Effect.Effect<Draft<MessageV2.Part>[]> = Effect.fn(
+      const resolvePart: (part: PromptInput["parts"][number]) => Effect.Effect<Draft<MessageV2.Part>[], any, never> = Effect.fn(
         "SessionPrompt.resolveUserPart",
       )(function* (part) {
         if (part.type === "file") {
@@ -1208,7 +1208,7 @@ export const layer = Layer.effect(
       return { info, parts }
     }, Effect.scoped)
 
-    const prompt: (input: PromptInput) => Effect.Effect<MessageV2.WithParts, Image.Error> = Effect.fn(
+    const prompt = Effect.fn(
       "SessionPrompt.prompt",
     )(function* (input: PromptInput) {
       const session = yield* sessions.get(input.sessionID).pipe(Effect.orDie)
@@ -1237,7 +1237,7 @@ export const layer = Layer.effect(
       throw new Error("Impossible")
     })
 
-    const runLoop: (sessionID: SessionID) => Effect.Effect<MessageV2.WithParts> = Effect.fn("SessionPrompt.run")(
+    const runLoop: (sessionID: SessionID) => Effect.Effect<MessageV2.WithParts, any, never> = Effect.fn("SessionPrompt.run")(
       function* (sessionID: SessionID) {
         const ctx = yield* InstanceState.context
         const slog = elog.with({ sessionID })
@@ -1482,7 +1482,7 @@ export const layer = Layer.effect(
       },
     )
 
-    const loop: (input: LoopInput) => Effect.Effect<MessageV2.WithParts> = Effect.fn("SessionPrompt.loop")(function* (
+    const loop = Effect.fn("SessionPrompt.loop")(function* (
       input: LoopInput,
     ) {
       const session = yield* sessions.get(input.sessionID).pipe(Effect.orDie)
@@ -1492,7 +1492,7 @@ export const layer = Layer.effect(
       return yield* state.ensureRunning(input.sessionID, onInterrupt, runLoop(input.sessionID))
     })
 
-    const shell: (input: ShellInput) => Effect.Effect<MessageV2.WithParts, Session.BusyError> = Effect.fn(
+    const shell = Effect.fn(
       "SessionPrompt.shell",
     )(function* (input: ShellInput) {
       const ready = yield* Latch.make()
@@ -1509,7 +1509,7 @@ export const layer = Layer.effect(
         // Inject keys into process.env so kode.exe inherits them
         const authSvc = yield* Effect.serviceOption(Auth.Service)
         if (Option.isSome(authSvc)) {
-            const auths = yield* authSvc.value.all().pipe(Effect.catch(() => Effect.succeed({})))
+            const auths = yield* authSvc.value.all().pipe(Effect.catch(() => Effect.succeed({} as Record<string, Auth.Info>)))
             if (auths["openai"]?.type === "api") process.env["OPENAI_API_KEY"] = auths["openai"].key
             if (auths["anthropic"]?.type === "api") process.env["ANTHROPIC_API_KEY"] = auths["anthropic"].key
         }
@@ -1519,9 +1519,7 @@ export const layer = Layer.effect(
           messageID: input.messageID,
           agent: input.agent ?? "primary",
           command: `"${binaryPath}" ${bin} ${input.arguments}`,
-        }
-        if (input.model) {
-          sh.model = Provider.parseModel(input.model)
+          ...(input.model ? { model: Provider.parseModel(input.model) } : {}),
         }
         return yield* shell(sh)
       }
@@ -1642,12 +1640,12 @@ export const layer = Layer.effect(
     })
 
     return Service.of({
-      cancel,
-      prompt,
-      loop,
-      shell,
-      command,
-      resolvePromptParts,
+      cancel: cancel as any,
+      prompt: prompt as any,
+      loop: loop as any,
+      shell: shell as any,
+      command: command as any,
+      resolvePromptParts: resolvePromptParts as any,
     })
   }),
 )

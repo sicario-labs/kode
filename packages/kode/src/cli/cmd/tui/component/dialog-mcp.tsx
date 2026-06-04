@@ -13,9 +13,9 @@ function Status(props: { enabled: boolean; loading: boolean }) {
     return <span style={{ fg: theme.textMuted }}>⋯ Loading</span>
   }
   if (props.enabled) {
-    return <span style={{ fg: theme.success, attributes: TextAttributes.BOLD }}>✓ Enabled</span>
+    return <span style={{ fg: theme.success, attributes: TextAttributes.BOLD }}>◈ Enabled</span>
   }
-  return <span style={{ fg: theme.textMuted }}>○ Disabled</span>
+  return <span style={{ fg: theme.textMuted }}>◇ Disabled</span>
 }
 
 export function DialogMcp() {

@@ -33,6 +33,7 @@ export interface Settings {
     editToolPartsExpanded: boolean
     showSessionProgressBar: boolean
     onboardingCompleted: boolean
+    reasoningUpgraded?: boolean
   }
   updates: {
     startup: boolean
@@ -114,11 +115,12 @@ const defaultSettings: Settings = {
     showSearch: false,
     showStatus: false,
     showTerminal: false,
-    showReasoningSummaries: false,
+    showReasoningSummaries: true,
     shellToolPartsExpanded: false,
     editToolPartsExpanded: false,
     showSessionProgressBar: true,
     onboardingCompleted: false,
+    reasoningUpgraded: true,
   },
   updates: {
     startup: true,
@@ -155,7 +157,21 @@ function withFallback<T>(read: () => T | undefined, fallback: T) {
 export const { use: useSettings, provider: SettingsProvider } = createSimpleContext({
   name: "Settings",
   init: () => {
-    const [store, setStore, _, ready] = persisted("settings.v3", createStore<Settings>(defaultSettings))
+    const [store, setStore, _, ready] = persisted(
+      {
+        key: "settings.v3",
+        migrate: (val: any) => {
+          if (val && val.general) {
+            if (!val.general.reasoningUpgraded) {
+              val.general.showReasoningSummaries = true
+              val.general.reasoningUpgraded = true
+            }
+          }
+          return val
+        },
+      },
+      createStore<Settings>(defaultSettings)
+    )
 
     createEffect(() => {
       if (typeof document === "undefined") return

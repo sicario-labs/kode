@@ -505,7 +505,7 @@ export const { use: useMarked, provider: MarkedProvider } = createSimpleContext(
           code(token) {
             if (token.lang === "carousel") {
               const slides = token.text.split("<!-- slide -->").map((s: string) => s.trim());
-              const htmlSlides = slides.map((slide: string) => this.parser.parse(this.lexer.lex(slide)));
+              const htmlSlides = slides.map((slide: string) => marked.parse(slide) as string);
               const slidesHtml = htmlSlides.map((html: string, i: number) => `
                 <div class="carousel-slide" data-index="${i}" style="display: ${i === 0 ? 'block' : 'none'};">
                   ${html}

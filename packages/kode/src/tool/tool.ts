@@ -40,7 +40,7 @@ export type Context<M extends Metadata = Metadata> = {
   extra?: { [key: string]: unknown }
   messages: MessageV2.WithParts[]
   metadata(input: { title?: string; metadata?: M }): Effect.Effect<void>
-  ask(input: Omit<Permission.Request, "id" | "sessionID" | "tool">): Effect.Effect<void>
+  ask(input: Omit<Permission.Request, "id" | "sessionID" | "tool">): Effect.Effect<void, any, never>
 }
 
 export interface ExecuteResult<M extends Metadata = Metadata> {
@@ -58,7 +58,7 @@ export interface Def<
   description: string
   parameters: Parameters
   jsonSchema?: JSONSchema7
-  execute(args: Schema.Schema.Type<Parameters>, ctx: Context): Effect.Effect<ExecuteResult<M>>
+  execute(args: Schema.Schema.Type<Parameters>, ctx: Context): Effect.Effect<ExecuteResult<M>, any, never>
   formatValidationError?(error: unknown): string
 }
 export type DefWithoutID<
@@ -116,7 +116,8 @@ function wrap<Parameters extends Schema.Decoder<unknown>, Result extends Metadat
           ...(ctx.callID ? { "tool.call_id": ctx.callID } : {}),
         }
         return Effect.gen(function* () {
-          const decoded = yield* decode(args).pipe(
+          const coercedArgs = getCoercedArgs(toolInfo.parameters, args)
+          const decoded = yield* decode(coercedArgs).pipe(
             Effect.mapError(
               (error) =>
                 new InvalidArgumentsError({
@@ -176,6 +177,62 @@ export function init<P extends Schema.Decoder<unknown>, M extends Metadata>(
       id: info.id,
     }
   })
+}
+
+function getCoercedArgs(schema: any, args: any): any {
+  if (args === null || typeof args !== "object") return args
+  const coerced = { ...args }
+  
+  const fields = schema?.fields || schema?.ast?.fields || (schema?.ast && schema.ast._tag === "TypeLiteral" && schema.ast.propertySignatures)
+  
+  if (fields) {
+    if (Array.isArray(fields)) {
+      for (const prop of fields) {
+        const name = prop.name
+        if (name in coerced) {
+          coerced[name] = coerceValue(prop.type, coerced[name])
+        }
+      }
+    } else {
+      for (const key of Object.keys(fields)) {
+        if (key in coerced) {
+          coerced[key] = coerceValue(fields[key], coerced[key])
+        }
+      }
+    }
+  }
+  return coerced
+}
+
+function coerceValue(typeSchema: any, value: any): any {
+  if (value === undefined || value === null) return value
+  
+  const schemaStr = String(typeSchema).toLowerCase()
+  const astTag = typeSchema?.ast?._tag || ""
+  
+  const isBoolean = 
+    schemaStr.includes("boolean") || 
+    astTag.includes("boolean") || 
+    (typeSchema?.ast?.type && String(typeSchema.ast.type).includes("boolean"))
+    
+  const isNumber = 
+    schemaStr.includes("number") || 
+    schemaStr.includes("int") || 
+    astTag.includes("number") ||
+    (typeSchema?.ast?.type && String(typeSchema.ast.type).includes("number"))
+
+  if (isBoolean) {
+    if (value === "true" || value === 1 || value === "1") return true
+    if (value === "false" || value === 0 || value === "0") return false
+  }
+  
+  if (isNumber) {
+    if (typeof value === "string" && /^-?\d+(\.\d+)?$/.test(value)) {
+      return Number(value)
+    }
+  }
+  
+  return value
 }
 
 export * as Tool from "./tool"

@@ -5,6 +5,9 @@ import * as path from "path"
 import { Effect, Option } from "effect"
 import { VerificationGatekeeper, type VerifyResult, type ProgressCallback } from "../bridge/gatekeeper"
 import type { Info } from "../config/config"
+import * as Log from "@kode/core/util/log"
+
+const log = Log.create({ service: "verify-gate" })
 
 const CODE_EXTENSIONS = new Set([
   ".go", ".ts", ".tsx", ".js", ".jsx",
@@ -83,10 +86,50 @@ export function verifyFiles(
       ? yield* authSvcOption.value.all().pipe(Effect.catch(() => Effect.succeed({})))
       : ({} as any)
     const spawnEnv: Record<string, string> = {}
+    
+    // Copy all KODE_* environment variables from the process env
+    for (const [key, val] of Object.entries(process.env)) {
+      if (key.startsWith("KODE_") && val !== undefined) {
+        spawnEnv[key] = val
+      }
+    }
+
     if (auths["openai"]?.type === "api") spawnEnv["OPENAI_API_KEY"] = auths["openai"].key
     if (auths["anthropic"]?.type === "api") spawnEnv["ANTHROPIC_API_KEY"] = auths["anthropic"].key
+    if (auths["kode"]?.type === "api") {
+      spawnEnv["KODE_PRO_API_KEY"] = auths["kode"].key
+      spawnEnv["KODE_LLM_API_KEY"] = auths["kode"].key
+    }
+    if (auths["llmgateway"]?.type === "api") {
+      spawnEnv["KODE_PRO_API_KEY"] = auths["llmgateway"].key
+      spawnEnv["KODE_LLM_API_KEY"] = auths["llmgateway"].key
+    }
+
+    // If a gateway key is set, explicitly default the endpoint and model
+    // to bypass the direct-DeepSeek bypass logic in the Go config loader
+    if (spawnEnv["KODE_PRO_API_KEY"] || spawnEnv["KODE_LLM_API_KEY"]) {
+      if (!spawnEnv["KODE_LLM_ENDPOINT"]) {
+        spawnEnv["KODE_LLM_ENDPOINT"] = "https://api.trykode.xyz/v1"
+      }
+      if (!spawnEnv["KODE_LLM_MODEL"]) {
+        spawnEnv["KODE_LLM_MODEL"] = "deepseek-v4-flash"
+      }
+    }
+
+    log.info("Spawning verification gatekeeper", {
+      endpoint: spawnEnv["KODE_LLM_ENDPOINT"] || "public-fallback",
+      model: spawnEnv["KODE_LLM_MODEL"] || "public-fallback",
+      hasProKey: Boolean(spawnEnv["KODE_PRO_API_KEY"]),
+      hasLlmKey: Boolean(spawnEnv["KODE_LLM_API_KEY"]),
+    })
     
-    const gatekeeper = new VerificationGatekeeper(undefined, undefined, spawnEnv)
+    let gatekeeper: VerificationGatekeeper
+    try {
+      gatekeeper = new VerificationGatekeeper(undefined, undefined, spawnEnv)
+    } catch {
+      log.info("Verify binary not found; skipping verification")
+      return { approved: true, skipped: true, badge: " [verify skipped]" }
+    }
     if (onProgress) {
       gatekeeper.onProgress(onProgress)
     }
@@ -98,15 +141,16 @@ export function verifyFiles(
         vc.block_architecture ?? false,
       ),
     ).pipe(
-      Effect.catch((error) =>
-        Effect.succeed({
-          approved: true,
+      Effect.catch((error: any) => {
+        const message = error instanceof Error ? error.message : String(error)
+        return Effect.succeed({
+          approved: false,
           result: {
-            status: "PASS" as const,
-            failed_files: {},
+            status: "FAIL" as const,
+            failed_files: { "_verification_binary": message },
           },
-        }),
-      ),
+        })
+      }),
     )
 
     if (approved && result.status === "PASS") {

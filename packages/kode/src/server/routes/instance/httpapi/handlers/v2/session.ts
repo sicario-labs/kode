@@ -96,45 +96,46 @@ export const sessionHandlers = HttpApiBuilder.group(InstanceHttpApi, "v2.session
     return handlers
       .handle(
         "sessions",
-        Effect.fn(function* (ctx) {
-          if (ctx.query.cursor && hasCursorFilter(ctx.query))
-            return yield* new InvalidCursorError({ message: "Cursor cannot be combined with order or filters" })
-          const decoded = yield* Effect.try({
-            try: () => (ctx.query.cursor ? sessionCursor.decode(ctx.query.cursor) : undefined),
-            catch: () => new InvalidCursorError({ message: "Invalid cursor" }),
-          })
-          if (hasCursorRoutingMismatch(ctx.query, decoded))
-            return yield* new InvalidCursorError({ message: "Cursor does not match requested directory or workspace" })
-          const order = decoded?.order ?? ctx.query.order ?? "desc"
-          const filters = decoded ?? {
-            directory: ctx.query.directory,
-            path: ctx.query.path,
-            workspaceID: yield* decodeWorkspaceID(ctx.query.workspace),
-            roots: ctx.query.roots,
-            start: ctx.query.start,
-            search: ctx.query.search,
-          }
-          const sessions = yield* session.list({
-            limit: ctx.query.limit ?? DefaultSessionsLimit,
-            order,
-            directory: filters.directory,
-            path: filters.path,
-            workspaceID: filters.workspaceID,
-            roots: filters.roots,
-            start: filters.start,
-            search: filters.search,
-            cursor: decoded ? { id: decoded.id, time: decoded.time, direction: decoded.direction } : undefined,
-          })
-          const first = sessions[0]
-          const last = sessions.at(-1)
-          return {
-            items: sessions,
-            cursor: {
-              previous: first ? sessionCursor.encode(first, order, "previous", filters) : undefined,
-              next: last ? sessionCursor.encode(last, order, "next", filters) : undefined,
-            },
-          }
-        }),
+        (ctx: { readonly query: { readonly directory?: string | undefined; readonly workspace?: string | undefined; readonly limit?: number | undefined; readonly order?: "asc" | "desc" | undefined; readonly path?: string | undefined; readonly roots?: boolean | undefined; readonly start?: number | undefined; readonly search?: string | undefined; readonly cursor?: string | undefined } }) =>
+          Effect.gen(function* () {
+            if (ctx.query.cursor && hasCursorFilter(ctx.query))
+              return yield* new InvalidCursorError({ message: "Cursor cannot be combined with order or filters" })
+            const decoded = yield* Effect.try({
+              try: () => (ctx.query.cursor ? sessionCursor.decode(ctx.query.cursor) : undefined),
+              catch: () => new InvalidCursorError({ message: "Invalid cursor" }),
+            })
+            if (hasCursorRoutingMismatch(ctx.query, decoded))
+              return yield* new InvalidCursorError({ message: "Cursor does not match requested directory or workspace" })
+            const order = decoded?.order ?? ctx.query.order ?? "desc"
+            const filters = decoded ?? {
+              directory: ctx.query.directory,
+              path: ctx.query.path,
+              workspaceID: yield* decodeWorkspaceID(ctx.query.workspace),
+              roots: ctx.query.roots,
+              start: ctx.query.start,
+              search: ctx.query.search,
+            }
+            const sessions = yield* session.list({
+              limit: ctx.query.limit ?? DefaultSessionsLimit,
+              order,
+              directory: filters.directory,
+              path: filters.path,
+              workspaceID: filters.workspaceID,
+              roots: filters.roots,
+              start: filters.start,
+              search: filters.search,
+              cursor: decoded ? { id: decoded.id, time: decoded.time, direction: decoded.direction } : undefined,
+            })
+            const first = sessions[0]
+            const last = sessions.at(-1)
+            return {
+              items: sessions,
+              cursor: {
+                previous: first ? sessionCursor.encode(first, order, "previous", filters) : undefined,
+                next: last ? sessionCursor.encode(last, order, "next", filters) : undefined,
+              },
+            }
+          }),
       )
       .handle(
         "prompt",

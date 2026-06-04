@@ -96,7 +96,7 @@ function getConfig() {
         appId: "xyz.trykode.desktop.beta",
         productName: "Kode Beta",
         protocols: { name: "Kode Beta", schemes: ["kode"] },
-        publish: { provider: "github", owner: "anomalyco", repo: "kode-beta", channel: "latest" },
+        publish: { provider: "github", owner: "sicario-labs", repo: "kode-beta", channel: "latest" },
         rpm: { packageName: "kode-beta" },
       }
     }
@@ -106,7 +106,7 @@ function getConfig() {
         appId: "xyz.trykode.desktop",
         productName: "Kode",
         protocols: { name: "Kode", schemes: ["kode"] },
-        publish: { provider: "github", owner: "anomalyco", repo: "kode", channel: "latest" },
+        publish: { provider: "github", owner: "sicario-labs", repo: "kode", channel: "latest" },
         rpm: { packageName: "kode" },
       }
     }

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, test } from "bun:test"
 
-const src = await Bun.file(new URL("../public/oc-theme-preload.js", import.meta.url)).text()
+const src = await Bun.file(new URL("../public/kode-theme-preload.js", import.meta.url)).text()
 
 const run = () => Function(src)()
 

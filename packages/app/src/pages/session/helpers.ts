@@ -23,12 +23,17 @@ export const getSessionKey = (dir: string | undefined, id: string | undefined) =
 export const createSessionTabs = (input: TabsInput) => {
   const review = input.review ?? (() => false)
   const hasReview = input.hasReview ?? (() => false)
-  const contextOpen = createMemo(() => input.tabs().active() === "context" || input.tabs().all().includes("context"))
+  const contextOpen = createMemo(() => {
+    const t = input.tabs()
+    if (!t) return false
+    return t.active() === "context" || t.all().includes("context")
+  })
   const openedTabs = createMemo(
     () => {
+      const t = input.tabs()
+      if (!t) return emptyTabs
       const seen = new Set<string>()
-      return input
-        .tabs()
+      return t
         .all()
         .flatMap((tab) => {
           if (tab === "context" || tab === "review") return []
@@ -42,7 +47,9 @@ export const createSessionTabs = (input: TabsInput) => {
     { equals: same },
   )
   const activeTab = createMemo(() => {
-    const active = input.tabs().active()
+    const t = input.tabs()
+    if (!t) return "empty"
+    const active = t.active()
     if (active === "context") return active
     if (active === "review" && review()) return active
     if (active === "artifacts") return active
