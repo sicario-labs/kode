@@ -42,4 +42,25 @@ jobs:
         env:
           CGO_ENABLED: "0"
 
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - name: Install dependencies
+        run: bun install
+      - name: Typecheck
+        run: bun turbo typecheck
+
+  build-tui:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - name: Install dependencies
+        run: bun install
+      - name: Build TUI (smoke test)
+        working-directory: packages/kode
+        run: bun run build --single --skip-embed-web-ui --skip-install
+
  
